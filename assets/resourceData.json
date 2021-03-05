@@ -1,0 +1,54 @@
+{
+	"Water": {
+		"name": "Water",
+		"roomType": "water",
+		"value": {
+			"startValue": 50,
+			"minimum": 0,
+			"maximum": 200
+		},
+		"drawData": {
+			"color": [195, 235, 250],
+			"filled": true
+		}
+	},
+	"Food": {
+		"name": "Food",
+		"roomType": "food",
+		"value": {
+			"startValue": 50,
+			"minimum": 0,
+			"maximum": 200
+		},
+		"drawData": {
+			"color": [255, 145, 0],
+			"filled": true
+		}
+	},
+	"Power": {
+		"name": "Power",
+		"roomType": "power",
+		"value": {
+			"startValue": 50,
+			"minimum": 0,
+			"maximum": 200
+		},
+		"drawData": {
+			"color": [255, 255, 100],
+			"filled": true
+		}
+	},
+	"Caps": {
+		"name": "Caps",
+		"roomType": "none",
+		"value": {
+			"startValue": 100,
+			"minimum": 0,
+			"maximum": 1000000
+		},
+		"drawData": {
+			"color": [133, 187, 101],
+			"filled": false
+		}
+	}
+}

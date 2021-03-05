@@ -1,0 +1,15 @@
+{
+  "numOfRooms": 1,
+  "roomRects": [
+    [
+      200,
+      150
+    ]
+  ],
+  "roomNames": [
+    "lift"
+  ],
+  "roomIndexs": [
+    2
+  ]
+}

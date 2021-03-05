@@ -1,0 +1,288 @@
+{
+	"water": {
+		"name": "Water purification",
+		"resource": {
+			"type": "water",
+			"amount": 0.0,
+			"time": 60
+		},
+		"levelData": {
+			"level": 1,
+			"maxLevel": 3,
+			"levelCostFunction": "[level]**1.7 * [baseCost]",
+			"joinedRooms": [],
+			"joinedRoomLevel": 0,
+			"maxJoinedRooms": 3
+		},
+		"dwellers": [],
+		"dimensions": {
+			"width": 1,
+			"height": 1
+		},
+		"drawData": {
+			"color": [195, 235, 250],
+			"textColor": [55, 55, 55],
+			"image": false
+		}
+	},
+	"food": {
+		"name": "Diner",
+		"resource": {
+			"type": "food",
+			"amount": 0.0,
+			"time": 60
+		},
+		"levelData": {
+			"level": 1,
+			"maxLevel": 3,
+			"levelCostFunction": "[level]**1.7 * [baseCost]",
+			"joinedRooms": [],
+			"joinedRoomLevel": 0,
+			"maxJoinedRooms": 3
+		},
+		"dwellers": [],
+		"dimensions": {
+			"width": 1,
+			"height": 1
+		},
+		"drawData": {
+			"color": [255, 145, 0],
+			"textColor": [55, 55, 55],
+			"image": false
+		}
+	},
+	"power": {
+		"name": "Power generator",
+		"resource": {
+			"type": "power",
+			"amount": 0.0,
+			"time": 60
+		},
+		"levelData": {
+			"level": 1,
+			"maxLevel": 3,
+			"levelCostFunction": "[level]**1.7 * [baseCost]",
+			"joinedRooms": [],
+			"joinedRoomLevel": 0,
+			"maxJoinedRooms": 3
+		},
+		"dwellers": [],
+		"dimensions": {
+			"width": 1,
+			"height": 1
+		},
+		"drawData": {
+			"color": [255, 255, 100],
+			"textColor": [55, 55, 55],
+			"image": false
+		}
+	},
+	"lab": {
+		"name": "Labatory",
+		"resource": {
+			"type": "experiments",
+			"amount": 0.0,
+			"time": 0
+		},
+		"levelData": {
+			"level": 1,
+			"maxLevel": 3,
+			"levelCostFunction": "[level]**1.6 * [baseCost]",
+			"joinedRooms": [],
+			"joinedRoomLevel": 0,
+			"maxJoinedRooms": 2
+		},
+		"dwellers": [],
+		"dimensions": {
+			"width": 2,
+			"height": 1
+		},
+		"drawData": {
+			"color": [180, 180, 180],
+			"textColor": [55, 55, 55],
+			"image": false
+		}
+	},
+	"lounge": {
+		"name": "Lounge",
+		"resource": {
+			"type": "dwellers",
+			"amount": 0.0,
+			"time": 60
+		},
+		"levelData": {
+			"level": 1,
+			"maxLevel": 3,
+			"levelCostFunction": "[level]**1.6 * [baseCost]",
+			"joinedRooms": [],
+			"joinedRoomLevel": 0,
+			"maxJoinedRooms": 2
+		},
+		"dwellers": [],
+		"dimensions": {
+			"width": 2,
+			"height": 1
+		},
+		"drawData": {
+			"color": [75, 75, 200],
+			"textColor": [55, 55, 55],
+			"image": false
+		}
+	},
+	"admin": {
+		"name": "Control room",
+		"resource": {
+			"type": "wasteland",
+			"amount": 0.0,
+			"time": 60
+		},
+		"levelData": {
+			"level": 1,
+			"maxLevel": 1,
+			"levelCostFunction": "[level]**1.7 * [baseCost]",
+			"joinedRooms": [],
+			"joinedRoomLevel": 0,
+			"maxJoinedRooms": 0
+		},
+		"dwellers": [],
+		"dimensions": {
+			"width": 2,
+			"height": 1
+		},
+		"drawData": {
+			"color": [77, 77, 77],
+			"textColor": [55, 55, 55],
+			"image": false
+		}
+	},
+	"lift": {
+		"name": "Lift",
+		"resource": {
+			"type": "none",
+			"amount": 0.0,
+			"time": 0
+		},
+		"levelData": {
+			"level": 1,
+			"maxLevel": 1,
+			"levelCostFunction": "[level]**1.7 * [baseCost]",
+			"joinedRooms": [],
+			"joinedRoomLevel": 0,
+			"maxJoinedRooms": 0
+		},
+		"dwellers": [],
+		"dimensions": {
+			"width": 0.5,
+			"height": 1
+		},
+		"drawData": {
+			"color": [130, 130, 130],
+			"textColor": [55, 55, 55],
+			"image": false
+		}
+	},
+	"vaultDoor": {
+		"name": "Vault Door",
+		"resource": {
+			"type": "security",
+			"amount": 0.0,
+			"time": 0
+		},
+		"levelData": {
+			"level": 1,
+			"maxLevel": 5,
+			"levelCostFunction": "[level]**1.9 * [baseCost]",
+			"joinedRooms": [],
+			"joinedRoomLevel": 0,
+			"maxJoinedRooms": 0
+		},
+		"dwellers": [],
+		"dimensions": {
+			"width": 3,
+			"height": 1
+		},
+		"drawData": {
+			"color": [110, 110, 110],
+			"textColor": [55, 55, 55],
+			"image": false
+		}
+	},
+	"radio": {
+		"name": "Radio",
+		"resource": {
+			"type": "happiness",
+			"amount": 0.0,
+			"time": 360
+		},
+		"levelData": {
+			"level": 1,
+			"maxLevel": 5,
+			"levelCostFunction": "[level]**1.8 * [baseCost]",
+			"joinedRooms": [],
+			"joinedRoomLevel": 0,
+			"maxJoinedRooms": 3
+		},
+		"dwellers": [],
+		"dimensions": {
+			"width": 2,
+			"height": 1
+		},
+		"drawData": {
+			"color": [115, 77, 25],
+			"textColor": [55, 55, 55],
+			"image": false
+		}
+	},
+	"trainingRoom": {
+		"name": "Training Room",
+		"resource": {
+			"type": "stat",
+			"amount": 0.0,
+			"time": 0
+		},
+		"levelData": {
+			"level": 1,
+			"maxLevel": 4,
+			"levelCostFunction": "[level]**1.9 * [baseCost]",
+			"joinedRooms": [],
+			"joinedRoomLevel": 0,
+			"maxJoinedRooms": 3
+		},
+		"dwellers": [],
+		"dimensions": {
+			"width": 1,
+			"height": 1
+		},
+		"drawData": {
+			"color": [140, 140, 140],
+			"textColor": [55, 55, 55],
+			"image": false
+		}
+	},
+	"security": {
+		"name": "Security",
+		"resource": {
+			"type": "security",
+			"amount": 0.0,
+			"time": 120
+		},
+		"levelData": {
+			"level": 1,
+			"maxLevel": 5,
+			"levelCostFunction": "[level]**2 * [baseCost]",
+			"joinedRooms": [],
+			"joinedRoomLevel": 0,
+			"maxJoinedRooms": 2
+		},
+		"dwellers": [],
+		"dimensions": {
+			"width": 3,
+			"height": 1
+		},
+		"drawData": {
+			"color": [80, 80, 80],
+			"textColor": [55, 55, 55],
+			"image": false
+		}
+	}
+}

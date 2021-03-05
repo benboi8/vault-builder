@@ -1,0 +1,48 @@
+{
+  "unarmed":{
+    "brass knuckles": 6,
+    "spiked knucles": 9
+  },
+  "melee": {
+    "combt knife": 7,
+    "ripper": 30
+  },
+  "small guns": {
+    "pistols": {
+      "10mm pistol": 9,
+      "scoped .44 Magnum": 35
+    },
+    "smg": {
+      "10mm smg": 7,
+      "sydney's 10mm ultra smg": 9
+    },
+    "rifles": {
+      "assault rifle": 8,
+      "chinese assault rifle": 11
+    },
+    "shotguns": {
+      "combat shotgun": 55,
+      "the kneecapper": 75
+    }
+  },
+  "big guns": {
+    "direct fire": {
+      "flamer": 18,
+      "minigun": 5
+    },
+    "area of effect": {
+      "fat man": 1600,
+      "missile launcher": 200
+    }
+  },
+  "energy weapons": {
+    "pistols": {
+      "alien blaster": 100,
+      "laser pistol": 12
+    },
+    "rifles": {
+      "gauss rifle": 23,
+      "plasma rifle": 45
+    }
+  }
+}

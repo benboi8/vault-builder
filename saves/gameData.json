@@ -1,0 +1,9 @@
+{
+  "resources": {
+    "Water": 50,
+    "Food": 50,
+    "Power": 50,
+    "Caps": 100
+  },
+  "buildPage": 6
+}
