@@ -133,6 +133,8 @@ allSliders = []
 allResources = []
 placementOptions = []
 
+demolishList = []
+
 boundingRect = pg.Rect(50.5 * SF, 50.5 * SF, 550 * SF, 249 * SF)
 scrollCollideingRect = pg.Rect(50 * SF, 310 * SF, 500 * SF, 30 * SF)
 
@@ -991,31 +993,68 @@ def CheckAllConnections(room):
 	return leftRoom, rightRoom, upRoom, downRoom
 
 
+def CheckDemolish(room, direction=(None, None)):
+	global demolishList
+	leftRoomIndex, rightRoomIndex, upRoomIndex, downRoomIndex = CheckAllConnections(room)
+	leftRoom = allRooms[leftRoomIndex]
+	rightRoom = allRooms[rightRoomIndex]
+	upRoom = allRooms[upRoomIndex]
+	downRoom = allRooms[downRoomIndex]
+
+	if room not in demolishList:
+		demolishList.append(room)
+
+		if room.name == "Lift":
+			if direction[1] == None:
+				if upRoomIndex != -1:
+					CheckDemolish(upRoom, direction=(None, "up"))
+				if downRoomIndex != -1:
+					CheckDemolish(downRoom, direction=(None, "down"))
+			if direction[1] == "up":
+				if upRoomIndex != -1:
+					CheckDemolish(upRoom, direction=(None, "up"))
+			if direction[1] == "down":
+				if downRoomIndex != -1:
+					CheckDemolish(downRoom, direction=(None, "down"))
+
+		if direction[0] == None:
+			if leftRoomIndex != -1 and rightRoomIndex == -1:
+				CheckDemolish(leftRoom, direction=("left", None))
+			if rightRoomIndex != -1 and leftRoomIndex == -1:
+				CheckDemolish(rightRoom, direction=("right", None))
+		if direction[0] == "left":
+			if leftRoomIndex != -1:
+				CheckDemolish(leftRoom, direction=("left", None))
+		if direction[0] == "right":
+			if rightRoomIndex != -1:
+				CheckDemolish(rightRoom, direction=("right", None))
+	else:
+		room = demolishList[0]
+		if room in allRooms:
+			allRooms.remove(room)
+			for page in buildingPages:
+				if room in page:
+					page.remove(room)
+			for resource in allResources:
+				if room.resourceType == resource.roomType:
+					resource.activeRooms -= 1
+				if resource.name == "Caps":
+					resource.value += (room.upgradeCost * (room.level - 1)) + room.cost
+
+
 def DemolishBuild():
+	global tempRooms
 	for room in allRooms[numOfStartingRooms:]:
 		if room.rect.collidepoint(pg.mouse.get_pos()):
-			leftRoom, rightRoom, upRoom, downRoom = CheckAllConnections(room)
-			remove = True
-			if remove:
-				allRooms.remove(room)
-				for page in buildingPages:
-					if room in page:
-						page.remove(room)
-				for resource in allResources:
-					if room.resourceType == resource.roomType:
-						resource.activeRooms -= 1
-					if resource.name == "Caps":
-						resource.value += (room.upgradeCost * (room.level - 1)) + room.cost			
+			# demolishList = []
+			CheckDemolish(room)		
+
 
 def AddRoom(roomName):
 	room = Room(mainWindow, (0, 0), roomDataFilePath, roomName)
-	for resource in allResources:
-		if resource.name == "Caps":
-			if resource.value - room.cost >= resource.minAmount:
-				resource.value -= room.cost
-				if len(tempRooms) == 0:
-					tempRooms.append(room)
-					CalculatePossiblePlacements()
+	if len(tempRooms) == 0:
+		tempRooms.append(room)
+		CalculatePossiblePlacements()
 
 
 def MoveRoom(event):
@@ -1119,15 +1158,19 @@ def CalculatePossiblePlacements():
 def PlaceRoom(rect):
 	global placementOptions
 	room = tempRooms[0]
-	room.rect = rect
-	allRooms.append(room)
-	tempRooms.pop()
-	placementOptions = []
-	index = rowHeights.index(room.rect.y)
-	buildingPages[index].append(room)
 	for resource in allResources:
-		if room.resourceType == resource.roomType:
-			resource.activeRooms += 1
+		if resource.name == "Caps":
+			if resource.value - room.cost >= resource.minAmount:
+				resource.value -= room.cost
+				room.rect = rect
+				allRooms.append(room)
+				tempRooms.pop()
+				placementOptions = []
+				index = rowHeights.index(room.rect.y)
+				buildingPages[index].append(room)
+				for resource in allResources:
+					if room.resourceType == resource.roomType:
+						resource.activeRooms += 1
 
 
 def BuildPage(direction):
