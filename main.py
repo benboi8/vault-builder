@@ -8,6 +8,7 @@ from PIL import Image
 # initialise pygame
 pg.init()
 clock = pg.time.Clock()
+running = True
 
 # scaling factor
 # 1 = 640, 360
@@ -44,20 +45,6 @@ colBlue = (0, 0, 200)
 colOrange = (255, 145, 0)
 colLightGreen = (0, 255, 48)
 
-roomColors = {
-	"colWaterRoom": (195, 235, 250),
-	"colFoodRoom": (255, 145, 0),
-	"colPowerRoom": (255, 255, 100),
-	"colLabRoom": (180, 180, 180),
-	"colLoungeRoom": (75, 75, 200),
-	"colAdminRoom": (77, 77, 77),
-	"colLiftRoom": (130, 130, 130),
-	"colVaultDoor": (110, 110, 110),
-	"colRadioRoom": (115, 77, 25),
-	"colTrainingRoom": (140, 140, 140),
-	"colSecurityRoom": (80, 80, 80)
-}
-
 colMoneyResource = (133, 187, 101)
 
 colCancel = (200, 140, 140)
@@ -72,15 +59,17 @@ FONT = pg.font.SysFont("arial", 8 * SF)
 # "name", "roomData name"
 buildingButtonListData = [
 ("Lift", "lift"),
+("Lounge", "lounge"),
 ("Water", "water"),
 ("Food", "food"),
 ("Power", "power"),
-("Lounge", "lounge"),
+("Shop", "shop"),
 ("Admin", "admin"),
 ("Lab", "lab"),
 ("Radio", "radio"),
 ("Training", "trainingRoom"),
-("Security", "security")]
+("Security", "security"),
+]
 roomInfoLabels = []
 roomWidth = 50
 roomHeight = 50
@@ -133,6 +122,7 @@ allSliders = []
 allResources = []
 placementOptions = []
 
+# demolish
 demolishList = []
 
 boundingRect = pg.Rect(50.5 * SF, 50.5 * SF, 550 * SF, 249 * SF)
@@ -258,7 +248,7 @@ class ToggleButton:
 
 
 class HoldButton:
-	def __init__(self, surface, rect, buttonType, colorData, textData, actionData={}, lists=[allButtons]):
+	def __init__(self, surface, rect, buttonType, colorData, textData, actionData={}, lists=[allButtons], extraText=[]):
 		self.surface = surface
 		self.originalRect = rect
 		self.rect = pg.Rect(rect[0] * SF, rect[1] * SF, rect[2] * SF, rect[3] * SF)
@@ -271,6 +261,7 @@ class HoldButton:
 		self.text = textData[0]
 		self.textColor = textData[1]
 		self.textSurface = FONT.render(self.text, True, self.textColor)
+		self.extraText = extraText
 		self.actionData = actionData
 		for listToAppend in lists:
 			listToAppend.append(self)
@@ -278,10 +269,17 @@ class HoldButton:
 
 	def Rescale(self):
 		self.rect = pg.Rect(self.originalRect[0] * SF, self.originalRect[1] * SF, self.originalRect[2] * SF, self.originalRect[3] * SF)
+		self.extraTextSurfaces = [] 
+		for text in self.extraText:
+			textSurface = FONT.render(str(text), True, self.textColor)
+			rect = pg.Rect((self.rect.x + self.rect.w // 2) - textSurface.get_width() // 2, (self.rect.y + self.rect.h // 2) - textSurface.get_height() // 2, self.rect.w, self.rect.h)
+			self.extraTextSurfaces.append((textSurface, rect))
 
 	def Draw(self):
 		pg.draw.rect(self.surface, self.currentColor, self.rect)
 		self.surface.blit(self.textSurface, self.rect)
+		for textSurfaceData in self.extraTextSurfaces:
+			self.surface.blit(textSurfaceData[0], textSurfaceData[1])
 
 	def HandleEvent(self, event):
 		if event.type == pg.MOUSEBUTTONDOWN:
@@ -297,6 +295,14 @@ class HoldButton:
 			self.currentColor = self.activeColor
 		else:
 			self.currentColor = self.inactiveColor
+
+	def ChangeRect(self, newRect):
+		self.rect = pg.Rect(newRect)
+		self.extraTextSurfaces = [] 
+		for text in self.extraText:
+			textSurface = FONT.render(str(text), True, self.textColor)
+			rect = pg.Rect((self.rect.x + self.rect.w // 2) - textSurface.get_width() // 2, (self.rect.y + self.rect.h // 2) - textSurface.get_height() // 2, self.rect.w, self.rect.h)
+			self.extraTextSurfaces.append((textSurface, rect))
 
 
 class Slider:
@@ -490,12 +496,9 @@ class Room:
 			if self.resourceType == resource.roomType:
 				self.resource = resource
 
-		self.image = roomData["drawData"]["image"]
-
 		self.text = self.name
 		self.textSurface = FONT.render(self.text, True, self.textColor)
 
-		self.hasImage = False
 		self.Rescale()
 
 		self.seconds = []
@@ -511,11 +514,10 @@ class Room:
 		self.upgradeCost = self.baseCost
 
 	def Draw(self):
-		if self.hasImage:
-			self.surface.blit(self.image, self.rect)
-		else:
-			pg.draw.rect(self.surface, self.color, self.rect)
-			self.surface.blit(self.textSurface, self.rect)
+		# draw room 
+		pg.draw.rect(self.surface, self.color, self.rect)
+		# draw name
+		self.surface.blit(self.textSurface, self.rect)
 
 		if self.selected:
 			DrawRectOutline(self.surface, colLightGreen, self.rect, 1.5 * SF)
@@ -566,6 +568,17 @@ class Resource:
 
 	def Draw(self):
 		# draw outline
+		if self.exactAmounts:
+			self.text = "{name}: {value:,}".format(name=self.name, value=self.value)
+		else:
+			if self.drawFilled:
+				self.text = "{name}".format(name=self.name)
+			else:
+				self.text = "{name}: {value:,}".format(name=self.name, value=self.value)
+
+		self.textSurface = FONT.render(self.text, True, self.textColor)
+
+
 		DrawObround(self.surface, self.color, self.rect)
 		if self.drawFilled:
 			# draw filled amount
@@ -574,13 +587,6 @@ class Resource:
 		else:
 			# draw text
 			self.surface.blit(self.textSurface, (self.rect.x + self.rect.w // 2- self.textSurface.get_width() // 2, self.rect.y + self.rect.h // 2 - self.textSurface.get_height() // 2))
-
-		if self.exactAmounts:
-			self.text = "{name}: {value:,}".format(name=self.name, value=self.value)
-			self.textSurface = FONT.render(self.text, True, self.color)
-		else:
-			self.text = "{name}".format(name=self.name)
-			self.textSurface = FONT.render(self.text, True, self.color)
 
 	def DrawAmount(self):
 		DrawObround(self.surface, self.color, self.filledRect, True)
@@ -645,10 +651,9 @@ class Resource:
 
 
 def CreateResources():
-	global waterResource, foodResource, powerResource, moneyResource
 	x, y, w, h = 200, 10, 40, 15
 	for resource in resourceList:
-		waterResource = Resource(mainWindow, (x, y, w, h), resource, resourceDataFilePath)
+		resource = Resource(mainWindow, (x, y, w, h), resource, resourceDataFilePath)
 		x += 60
 
 
@@ -671,8 +676,12 @@ def CreateBuildingButtons():
 		x += buttonWidth + 5 * SF
 		name = buttonData[0]
 		actionData = buttonData[1]
-		color = roomColors["col" + name + "Room"]
-		roomButton = HoldButton(mainWindow, (x, startY, buttonWidth, buttonHeight), ("BUILD", "ADD ROOM"), (color, color), (name, colDarkGray), actionData) 
+		rect = pg.Rect(x, startY, buttonWidth, buttonHeight)
+		with open(roomDataFilePath, "r") as roomDataFile:
+			roomData = json.load(roomDataFile)
+			cost = roomData[actionData]["levelData"]["baseCost"]
+			color = roomData[actionData]["drawData"]["color"]
+		roomButton = HoldButton(mainWindow, rect, ("BUILD", "ADD ROOM"), (color, color), (name, colBlack), actionData, [allButtons], [cost]) 
 		buildScrollPages.append(roomButton)
 
 	cancelBuildButton = HoldButton(mainWindow, (10, 230, buttonWidth, buttonHeight), ("BUILD", "INCREASE BUILD AREA"), (colGreen, colLightGreen), ("Expand", colDarkGray))
@@ -995,15 +1004,20 @@ def CheckAllConnections(room):
 
 def CheckDemolish(room, direction=(None, None)):
 	global demolishList
+	remove = False
 	leftRoomIndex, rightRoomIndex, upRoomIndex, downRoomIndex = CheckAllConnections(room)
 	leftRoom = allRooms[leftRoomIndex]
 	rightRoom = allRooms[rightRoomIndex]
 	upRoom = allRooms[upRoomIndex]
 	downRoom = allRooms[downRoomIndex]
+	rooms = [leftRoom, rightRoom, upRoom, downRoom]
+	if rooms.count(-1) <= 1:
+		# only has one connection
+		remove = True
+		demolishList.append(room)
 
 	if room not in demolishList:
 		demolishList.append(room)
-
 		if room.name == "Lift":
 			if direction[1] == None:
 				if upRoomIndex != -1:
@@ -1018,9 +1032,9 @@ def CheckDemolish(room, direction=(None, None)):
 					CheckDemolish(downRoom, direction=(None, "down"))
 
 		if direction[0] == None:
-			if leftRoomIndex != -1 and rightRoomIndex == -1:
+			if leftRoomIndex != -1:
 				CheckDemolish(leftRoom, direction=("left", None))
-			if rightRoomIndex != -1 and leftRoomIndex == -1:
+			if rightRoomIndex != -1:
 				CheckDemolish(rightRoom, direction=("right", None))
 		if direction[0] == "left":
 			if leftRoomIndex != -1:
@@ -1029,24 +1043,29 @@ def CheckDemolish(room, direction=(None, None)):
 			if rightRoomIndex != -1:
 				CheckDemolish(rightRoom, direction=("right", None))
 	else:
-		room = demolishList[0]
-		if room in allRooms:
-			allRooms.remove(room)
+		# looped 
+		remove = True
+
+	if remove:
+		roomToDemolish = demolishList[0]
+		if roomToDemolish in allRooms:
+			demolishList = []
+			allRooms.remove(roomToDemolish)
 			for page in buildingPages:
-				if room in page:
-					page.remove(room)
+				if roomToDemolish in page:
+					page.remove(roomToDemolish)
 			for resource in allResources:
-				if room.resourceType == resource.roomType:
+				if roomToDemolish.resourceType == resource.roomType:
 					resource.activeRooms -= 1
 				if resource.name == "Caps":
-					resource.value += (room.upgradeCost * (room.level - 1)) + room.cost
+					resource.value += (roomToDemolish.upgradeCost * (roomToDemolish.level - 1)) + roomToDemolish.cost
 
 
 def DemolishBuild():
 	global tempRooms
 	for room in allRooms[numOfStartingRooms:]:
 		if room.rect.collidepoint(pg.mouse.get_pos()):
-			# demolishList = []
+			demolishList = []
 			CheckDemolish(room)		
 
 
@@ -1224,7 +1243,8 @@ def ScrollBuildMenu(direction):
 		if buildScrollMin <= value <= buildScrollMax:
 			buildScrollNum = value
 			for button in buildScrollPages:
-					button.rect.x = columnWidths[value - 1] + scrollAmount * buildScrollPages.index(button)
+				button.ChangeRect((columnWidths[value - 1] + scrollAmount * buildScrollPages.index(button), button.rect.y, button.rect.w, button.rect.h))
+				button.rect.x = columnWidths[value - 1] + scrollAmount * buildScrollPages.index(button)
 
 
 def Save():
@@ -1302,8 +1322,20 @@ def LoadGameData(path=loadGameData):
 			resource.UpdateValue(0)
 
 
+def Quit():
+	global running
+	running = False
+	# Save() 
+
+
 def HandleKeyboard(event):
 	global gameState
+	if event.type == pg.QUIT:
+		Quit()
+	if event.type == pg.KEYDOWN:
+		if event.key == pg.K_ESCAPE:
+			Quit()
+
 	if event.type == pg.KEYDOWN:
 		if event.key == pg.K_b:
 			if gameState != "BUILD":
@@ -1330,7 +1362,6 @@ def HandleKeyboard(event):
 		if event.button == 5:
 			BuildPage("down")
 
-running = True
 CreateButtons()
 CreateResources()
 AddStartingRooms()
@@ -1339,12 +1370,6 @@ GetBuildScrollColumnWidths()
 DrawLoop()
 while running:
 	for event in pg.event.get():
-		if event.type == pg.QUIT:
-			running = False
-		if event.type == pg.KEYDOWN:
-			if event.key == pg.K_ESCAPE:
-				running = False
-
 		HandleKeyboard(event)
 
 		if gameState == "BUILD":
@@ -1362,7 +1387,6 @@ while running:
 
 	for room in allRooms:
 		for resource in allResources:
-			if room.resourceType == resource.roomType:
-				resource.CalculateTime()
+			resource.CalculateTime()
 
 	DrawLoop()

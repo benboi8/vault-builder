@@ -1,9 +1,9 @@
 {
   "resources": {
-    "Water": 50,
-    "Food": 50,
-    "Power": 50,
-    "Caps": 100
+    "Water": 60,
+    "Food": 60,
+    "Power": 60,
+    "Caps": 30
   },
   "buildPage": 6
 }
