@@ -157,10 +157,12 @@ def DrawRectOutline(surface, color, rect, width=1):
 def DrawObround(surface, color, rect, filled=False, additive=True):
 	x, y, w, h = rect
 
-	radius = h // 2		
+	radius = h // 2	
+	# check if semicircles are added to the side or replace the side
 	if not additive:
 		x += radius
 		w -= radius * 2
+	# checks if it should be filled
 	if not filled:
 		pg.draw.aaline(surface, color, (x, y), (x + w, y), 3 * SF)
 		pg.draw.aaline(surface, color, (x, y + h), (x + w, y + h), 3 * SF)
@@ -214,7 +216,17 @@ def ChangeResolution(scalingFactor):
 
 
 class ToggleButton:
-	def __init__(self, surface, rect, buttonType, colorData, textData, actionData={}, lists=[allButtons], extraText=[], imageData=[None]):
+	def __init__(self, surface, rect, buttonType, colorData, textData, actionData=[], lists=[allButtons], extraText=[], imageData=[None]):
+		"""
+		Parameters: 
+			buttonType: tuple of gameState type and button action
+			colorData: tuple of active color and inactive color
+			textData: tuple of text and text color
+			actionData: list of any additional button action data
+			lists: list of lists to add self too
+			extraText: list of tuples containing the text and the rect
+			imageData: list of image path and scaled image path
+		"""
 		self.surface = surface
 		self.originalRect = rect
 		self.type = buttonType[0]
@@ -240,13 +252,13 @@ class ToggleButton:
 
 		self.Rescale()
 
+	# rescale all elements
 	def Rescale(self):
 		self.rect = pg.Rect(self.originalRect[0] * SF, self.originalRect[1] * SF, self.originalRect[2] * SF, self.originalRect[3] * SF)
 		self.extraTextSurfaces = [] 
-		for text in self.extraText:
-			textSurface = FONT.render(str(text), True, self.textColor)
-			rect = pg.Rect((self.rect.x + self.rect.w // 2) - textSurface.get_width() // 2, (self.rect.y + self.rect.h // 2) - textSurface.get_height() // 2, self.rect.w, self.rect.h)
-			self.extraTextSurfaces.append((textSurface, rect))
+		for textData in self.extraText:
+			textSurface = FONT.render(str(textData[0]), True, self.textColor)
+			self.extraTextSurfaces.append((textSurface, (textData[1][0] * SF) - textSurface.get_width() // 2, (textData[1][1] * SF) - textSurface.get_height() // 2))
 
 		if self.hasImage:
 			ScaleImage(self.imageData[0], (self.rect.w, self.rect.h), self.imageData[1])
@@ -263,19 +275,38 @@ class ToggleButton:
 			self.surface.blit(textSurfaceData[0], textSurfaceData[1])
 
 	def HandleEvent(self, event):
+		# check for left mouse button down
 		if event.type == pg.MOUSEBUTTONUP:
 			if event.button == 1: # left mouse button
 				if self.rect.collidepoint(pg.mouse.get_pos()):
 					self.active = not self.active
 
+		# change color
 		if self.active:
 			self.currentColor = self.activeColor
 		else:
 			self.currentColor = self.inactiveColor
 
+	def ChangeRect(self, newRect):
+		self.rect = pg.Rect(newRect)
+		self.extraTextSurfaces = [] 
+		for textData in self.extraText:
+			textSurface = FONT.render(str(textData[0]), True, self.textColor)
+			self.extraTextSurfaces.append((textSurface, ((self.rect.x + self.rect.w // 2) - textSurface.get_width() // 2, (self.rect.y + self.rect.h // 2) - textSurface.get_height() // 2)))
+
 
 class HoldButton:
-	def __init__(self, surface, rect, buttonType, colorData, textData, actionData={}, lists=[allButtons], extraText=[], imageData=[None]):
+	def __init__(self, surface, rect, buttonType, colorData, textData, actionData=[], lists=[allButtons], extraText=[], imageData=[None]):
+		"""
+		Parameters: 
+			buttonType: tuple of gameState type and button action
+			colorData: tuple of active color and inactive color
+			textData: tuple of text and text color
+			actionData: list of any additional button action data
+			lists: list of lists to add self too
+			extraText: list of tuples containing the text and the rect
+			imageData: list of image path and scaled image path
+		"""
 		self.surface = surface
 		self.originalRect = rect
 		self.rect = pg.Rect(rect[0] * SF, rect[1] * SF, rect[2] * SF, rect[3] * SF)
@@ -301,13 +332,13 @@ class HoldButton:
 
 		self.Rescale()
 
+	# rescale all elements
 	def Rescale(self):
 		self.rect = pg.Rect(self.originalRect[0] * SF, self.originalRect[1] * SF, self.originalRect[2] * SF, self.originalRect[3] * SF)
 		self.extraTextSurfaces = [] 
-		for text in self.extraText:
-			textSurface = FONT.render(str(text), True, self.textColor)
-			rect = pg.Rect((self.rect.x + self.rect.w // 2) - textSurface.get_width() // 2, (self.rect.y + self.rect.h // 2) - textSurface.get_height() // 2, self.rect.w, self.rect.h)
-			self.extraTextSurfaces.append((textSurface, rect))
+		for textData in self.extraText:
+			textSurface = FONT.render(str(textData[0]), True, self.textColor)
+			self.extraTextSurfaces.append((textSurface, ((textData[1][0] * SF) - textSurface.get_width() // 2, (textData[1][1] * SF) - textSurface.get_height() // 2)))
 		if self.hasImage:
 			ScaleImage(self.imageData[0], (self.rect.w, self.rect.h), self.imageData[1])
 			self.image = pg.image.load(self.imageData[1])
@@ -323,15 +354,18 @@ class HoldButton:
 			self.surface.blit(textSurfaceData[0], textSurfaceData[1])
 
 	def HandleEvent(self, event):
+		# check for left mouse down
 		if event.type == pg.MOUSEBUTTONDOWN:
 			if event.button == 1:
 				if self.rect.collidepoint(pg.mouse.get_pos()):
 					self.active = True
 
+		# check for left mouse up
 		if event.type == pg.MOUSEBUTTONUP:
 			if event.button == 1:
 				self.active = False
 
+		# change color
 		if self.active:
 			self.currentColor = self.activeColor
 		else:
@@ -340,14 +374,26 @@ class HoldButton:
 	def ChangeRect(self, newRect):
 		self.rect = pg.Rect(newRect)
 		self.extraTextSurfaces = [] 
-		for text in self.extraText:
-			textSurface = FONT.render(str(text), True, self.textColor)
-			rect = pg.Rect((self.rect.x + self.rect.w // 2) - textSurface.get_width() // 2, (self.rect.y + self.rect.h // 2) - textSurface.get_height() // 2, self.rect.w, self.rect.h)
-			self.extraTextSurfaces.append((textSurface, rect))
+		for textData in self.extraText:
+			textSurface = FONT.render(str(textData[0]), True, self.textColor)
+			self.extraTextSurfaces.append((textSurface, ((self.rect.x + self.rect.w // 2) - textSurface.get_width() // 2, (self.rect.y + self.rect.h // 2) - textSurface.get_height() // 2)))
+
+	def UpdateExtraText(self, extraText):
+		for textData in self.extraText:
+			textSurface = FONT.render(str(textData[0]), True, self.textColor)
+			self.extraTextSurfaces.append((textSurface, ((textData[1][0] * SF) - textSurface.get_width() // 2, (textData[1][1] * SF) - textSurface.get_height() // 2)))
 
 
 class Slider:
-	def __init__(self, surface, rect, sliderType, colors, textData, bounds):
+	def __init__(self, surface, rect, sliderType, colors, textData, bounds, lists=[allSliders]):
+		"""
+		Parameters:
+			sliderType: tuple of gameState type and slider action
+			colors: tuple of active color and inactive color
+			textData: tuple of text and text color and antialliasing
+			bounds: tuple of lower bound and upper bound
+			lists: list of lists to add self too
+		"""
 		self.surface = surface
 		self.originalRect = rect
 		self.type = sliderType[0]
@@ -364,8 +410,10 @@ class Slider:
 		self.active = False
 		self.direction = "right"
 		self.Rescale()
-		allSliders.append(self)
+		for listToAppend in lists:
+			listToAppend.append(self)
 
+	# rescale all elements
 	def Rescale(self):
 		self.rect = pg.Rect(self.originalRect[0] * SF, self.originalRect[1] * SF, self.originalRect[2] * SF, self.originalRect[3] * SF)
 		self.font = pg.font.SysFont("arial", self.aa * SF)
@@ -382,40 +430,44 @@ class Slider:
 		# draw text
 		self.surface.blit(self.textSurface, ((self.sliderRect.x + self.sliderRect.w // 2) - self.textSurface.get_width() // 2, (self.sliderRect.y + self.sliderRect.h // 2) - self.textSurface.get_height() // 2))
 
-
 	def HandleEvent(self, event):
+		# check for left mouse button down
 		if event.type == pg.MOUSEBUTTONDOWN:
 			if event.button == 1:
 				mousePos = pg.mouse.get_pos()
 				if self.collisionRect.collidepoint(mousePos):
 					self.active = True
 
+		# check for left mouse button up
 		if event.type == pg.MOUSEBUTTONUP:
 			if event.button == 1:
 				self.active = False
 
+		# change color
 		if self.active:
 			self.sliderColor = self.activeColor
 			self.MoveSlider()
 		else:
 			self.sliderColor = self.inactiveColor
 
-		self.textSurface = self.font.render(self.text, True, self.textColor)
-
+	# change slider position
 	def MoveSlider(self):
+		# get slider direction
 		motion = pg.mouse.get_rel()
 		if motion[0] <= 0:
 			self.direction = "left"
 		elif motion[0] > 0:
 			self.direction = "right"
-
+	
+		# set the slider x to mouse x
 		mousePosX = pg.mouse.get_pos()[0]
 		if mousePosX < self.rect.x + self.rect.w - self.sliderRect.w // 2:
 			if mousePosX > self.rect.x + self.sliderRect.w // 2:
 				self.sliderRect.x = mousePosX - self.sliderRect.w // 2
 				self.ChangeValue()
+		# update rect and text
 		self.collisionRect = pg.Rect(self.sliderRect.x - self.sliderRect.h // 2, self.sliderRect.y, self.sliderRect.w + self.sliderRect.h, self.sliderRect.h)
-		self.textSurface = FONT.render(self.text, True, self.textColor, self.sliderColor)
+		self.textSurface = FONT.render(self.text, True, self.textColor)
 
 	def ChangeValue(self):
 		self.value = max(round(((self.sliderRect.x - self.rect.x) / self.rect.w) * (self.bounds[1] + 1), 0), self.bounds[0])
@@ -426,6 +478,13 @@ class Slider:
 
 class ProgressBar:
 	def __init__(self, surface, rect, percentageFilled, colorData, textData, drawData=[False, False], lists=[allProgressBars], extraData=[]):
+		"""
+		Parameters:
+			colorData: tuple of color, background color
+			textData: tuple of text, text color
+			drawData: tuple of rounded edges and additive
+			extraData: and additional data
+		"""
 		self.surface = surface
 		self.originalRect = rect
 		self.percentageFilled = percentageFilled
@@ -442,6 +501,7 @@ class ProgressBar:
 		for listToAppend in lists:
 			listToAppend.append(self)
 
+	# rescale all elements
 	def Rescale(self):
 		self.rect = pg.Rect(self.originalRect[0] * SF, self.originalRect[1] * SF, self.originalRect[2] * SF, self.originalRect[3] * SF)
 
@@ -459,6 +519,14 @@ class ProgressBar:
 
 class Label:
 	def __init__(self, surface, rect, gameStateType, colors, textData, drawData=[False, False, True], lists=[allLabels], extraText=[]):
+		"""
+		Parameters:
+			gameStateType: Which gameState to be drawn in
+			colors: tuple of border color, background color
+			textData: tuple of text, text color, font size, how to align text
+			drawData: tuple of rounded edges, addititve, filled
+			extraData: any additional data
+		"""
 		self.surface = surface
 		self.originalRect = rect
 		self.gameStateType = gameStateType
@@ -480,6 +548,7 @@ class Label:
 		for listToAppend in lists:
 			listToAppend.append(self)
 
+	# rescale all elements
 	def Rescale(self):
 		self.rect = pg.Rect(self.originalRect[0] * SF, self.originalRect[1] * SF, self.originalRect[2] * SF, self.originalRect[3] * SF)
 		self.font = pg.font.SysFont("arial", self.fontSize * SF)
@@ -534,9 +603,9 @@ class Room:
 		self.resourceAmount = roomData["resource"]["amount"]
 		self.workTime = roomData["resource"]["time"]
 		self.level = roomData["levelData"]["level"]
+		self.multiplier = roomData["levelData"]["multiplier"]
 		self.maxLevel = roomData["levelData"]["maxLevel"]
 		self.baseCost = roomData["levelData"]["baseCost"]
-		self.levelCostFunction = roomData["levelData"]["levelCostFunction"]
 		self.joinedRooms = roomData["levelData"]["joinedRooms"]
 		self.joinedRoomLevel = roomData["levelData"]["joinedRoomLevel"]
 		self.dwellersWorking = roomData["dwellers"]
@@ -567,7 +636,12 @@ class Room:
 
 	def CalculateCosts(self):
 		self.cost = self.baseCost
-		self.upgradeCost = self.baseCost
+		self.upgradeCost = round(self.level ** self.multiplier * self.baseCost)
+
+	def Upgrade(self):
+		if self.level + 1 <= self.maxLevel:
+			self.level += 1
+			self.upgradeCost = round(self.level ** self.multiplier * self.baseCost)
 
 	def Draw(self):
 		# draw room 
@@ -629,7 +703,8 @@ class Resource:
 		if self.drawFilled:
 			self.text = "{name}".format(name=self.name)
 		else:
-			self.text = "{name}: {value:,}".format(name=self.name, value=self.value)
+			value = int(self.value)
+			self.text = "{name}: {value:,}".format(name=self.name, value=value)
 		self.textSurface = FONT.render(self.text, True, self.textColor)
 		self.exactAmounts = False
 		self.seconds = []
@@ -647,12 +722,14 @@ class Resource:
 	def Draw(self):
 		# draw outline
 		if self.exactAmounts:
-			self.text = "{name}: {value:,}".format(name=self.name, value=self.value)
+			value = int(self.value)
+			self.text = "{name}: {value:,}".format(name=self.name, value=value)
 		else:
 			if self.drawFilled:
 				self.text = "{name}".format(name=self.name)
 			else:
-				self.text = "{name}: {value:,}".format(name=self.name, value=self.value)
+				value = int(self.value)
+				self.text = "{name}: {value:,}".format(name=self.name, value=value)
 
 		self.textSurface = FONT.render(self.text, True, self.textColor)
 
@@ -688,7 +765,8 @@ class Resource:
 		if self.drawFilled:
 			self.text = "{name}".format(name=self.name)
 		else:
-			self.text = "{name}: {value:,}".format(name=self.name, value=self.value)
+			value = int(self.value)
+			self.text = "{name}: {value:,}".format(name=self.name, value=value)
 
 		self.textSurface = FONT.render(self.text, True, self.textColor)
 		self.UpdateRect()
@@ -709,7 +787,8 @@ class Resource:
 			if self.drawFilled:
 				self.text = "{name}".format(name=self.name)
 			else:
-				self.text = "{name}: {value:,}".format(name=self.name, value=self.value)
+				value = int(self.value)
+				self.text = "{name}: {value:,}".format(name=self.name, value=value)
 
 			self.textSurface = FONT.render(self.text, True, self.textColor)
 			self.UpdateRect()
@@ -752,7 +831,7 @@ def CreateBuildingButtons():
 			roomData = json.load(roomDataFile)
 			cost = roomData[actionData]["levelData"]["baseCost"]
 			color = roomData[actionData]["drawData"]["color"]
-		roomButton = HoldButton(mainWindow, rect, ("BUILD", "ADD ROOM"), (color, color), (name, colBlack), actionData, [allButtons], [cost]) 
+		roomButton = HoldButton(mainWindow, rect, ("BUILD", "ADD ROOM"), (color, color), (name, colBlack), actionData, [allButtons], [(cost, (rect.x +  rect.w // 2, rect.y +  rect.h // 2, rect.w, rect.h))]) 
 		buildScrollPages.append(roomButton)
 
 	increaseBuildArea = HoldButton(mainWindow, (10, 230, buttonWidth, buttonHeight), ("BUILD", "INCREASE BUILD AREA"), (colGreen, colLightGreen), ("Expand", colDarkGray), imageData=[buttonPath + "BUILD/expand.png", tempButtonPath + "BUILD/expand.png"])
@@ -1050,24 +1129,31 @@ def RoomClicked(room):
 
 	if room != False:
 		roomNameLabel = Label(mainWindow, (50, 305, 540, 50), "NONE", (colLightGray, room.color), ("{name}: level: {lvl}".format(name=room.name, lvl=room.level), room.color, 14, "top-center"), [True, False, True], [roomInfoLabels])
-		upgradeRoom = HoldButton(mainWindow, (500, 315, 30, 30), ("NONE", "UPGRADE ROOM") ,(colWhite, colLightGray), ("Upgrade", colDarkGray), {"room": room}, [roomInfoLabels, allButtons])
-		roomInfo = HoldButton(mainWindow, (540, 315, 30, 30), ("NONE", "ROOM INFO") ,(colWhite, colLightGray), ("Info", colDarkGray), {"room": room}, [roomInfoLabels, allButtons])
+		x, y, w, h = 500, 315, 30, 30
+		if room.level < room.maxLevel:
+			upgradeRoom = HoldButton(mainWindow, (x, y, w, h), ("NONE", "UPGRADE ROOM") ,(colWhite, colLightGray), ("Upgrade", colDarkGray), {"room": room}, [roomInfoLabels, allButtons], extraText=[(room.upgradeCost, (x + w // 2, y + h // 2, w, h))])
+		roomInfo = HoldButton(mainWindow, (x + w + 10, y, w, h), ("NONE", "ROOM INFO") ,(colWhite, colLightGray), ("Info", colDarkGray), {"room": room}, [roomInfoLabels, allButtons])
 		for resource in allResources:
 			if room.resourceType == resource.roomType:
 				if room.name != "Lift":
-					resourceProgressBar = ProgressBar(mainWindow, (90, 330, 400, 15), len(resource.seconds) / resource.workTime, (room.color, room.color), ("", colLightGray), [True, True], [roomInfoLabels, allProgressBars], [resource])
+					resourceProgressBar = ProgressBar(mainWindow, (90, 330, 400, 15), len(resource.seconds) / resource.workTime, (room.color, room.color), ("", colLightGray), [True, True], [roomInfoLabels, allProgressBars], [room])
 		room.selected = True
 
 
 def UpgradeRoom(button):
 	room = button.actionData["room"]
-	maxLevel = room.maxLevel
-	if room.level + 1 <= maxLevel:
-		for resource in allResources:
-			if resource.name == "Caps":
-				if resource.value - room.upgradeCost >= resource.minAmount:
-					resource.value -= room.upgradeCost
-					room.level += 1
+	for resource in allResources:
+		if resource.name == "Caps":
+			if resource.value - room.upgradeCost >= resource.minAmount:
+				resource.value -= room.upgradeCost
+				room.Upgrade()
+				x, y, w, h = button.rect
+				x /= SF
+				y /= SF
+				w /= SF
+				h /= SF
+				button.UpdateExtraText([(room.upgradeCost, (x + w // 2, y + h // 2, w, h))])
+
 	button.actionData = {"room" : room}
 	RoomClicked(room)
 
