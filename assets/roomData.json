@@ -3,12 +3,13 @@
 		"name": "Water purification",
 		"resource": {
 			"type": "water",
-			"amount": 0.0,
-			"time": 60
+			"amount": 4,
+			"time": 30
 		},
 		"levelData": {
 			"level": 1,
 			"maxLevel": 3,
+			"baseCost": 20,
 			"levelCostFunction": "[level]**1.7 * [baseCost]",
 			"joinedRooms": [],
 			"joinedRoomLevel": 0,
@@ -29,12 +30,13 @@
 		"name": "Diner",
 		"resource": {
 			"type": "food",
-			"amount": 0.0,
-			"time": 60
+			"amount": 4,
+			"time": 30
 		},
 		"levelData": {
 			"level": 1,
 			"maxLevel": 3,
+			"baseCost": 20,
 			"levelCostFunction": "[level]**1.7 * [baseCost]",
 			"joinedRooms": [],
 			"joinedRoomLevel": 0,
@@ -55,12 +57,13 @@
 		"name": "Power generator",
 		"resource": {
 			"type": "power",
-			"amount": 0.0,
-			"time": 60
+			"amount": 4,
+			"time": 30
 		},
 		"levelData": {
 			"level": 1,
 			"maxLevel": 3,
+			"baseCost": 20,
 			"levelCostFunction": "[level]**1.7 * [baseCost]",
 			"joinedRooms": [],
 			"joinedRoomLevel": 0,
@@ -87,6 +90,7 @@
 		"levelData": {
 			"level": 1,
 			"maxLevel": 3,
+			"baseCost": 50,
 			"levelCostFunction": "[level]**1.6 * [baseCost]",
 			"joinedRooms": [],
 			"joinedRoomLevel": 0,
@@ -113,6 +117,7 @@
 		"levelData": {
 			"level": 1,
 			"maxLevel": 3,
+			"baseCost": 30,
 			"levelCostFunction": "[level]**1.6 * [baseCost]",
 			"joinedRooms": [],
 			"joinedRoomLevel": 0,
@@ -139,6 +144,7 @@
 		"levelData": {
 			"level": 1,
 			"maxLevel": 1,
+			"baseCost": 100,
 			"levelCostFunction": "[level]**1.7 * [baseCost]",
 			"joinedRooms": [],
 			"joinedRoomLevel": 0,
@@ -165,6 +171,7 @@
 		"levelData": {
 			"level": 1,
 			"maxLevel": 1,
+			"baseCost": 10,
 			"levelCostFunction": "[level]**1.7 * [baseCost]",
 			"joinedRooms": [],
 			"joinedRoomLevel": 0,
@@ -191,6 +198,7 @@
 		"levelData": {
 			"level": 1,
 			"maxLevel": 5,
+			"baseCost": 10,
 			"levelCostFunction": "[level]**1.9 * [baseCost]",
 			"joinedRooms": [],
 			"joinedRoomLevel": 0,
@@ -217,6 +225,7 @@
 		"levelData": {
 			"level": 1,
 			"maxLevel": 5,
+			"baseCost": 50,
 			"levelCostFunction": "[level]**1.8 * [baseCost]",
 			"joinedRooms": [],
 			"joinedRoomLevel": 0,
@@ -243,6 +252,7 @@
 		"levelData": {
 			"level": 1,
 			"maxLevel": 4,
+			"baseCost": 35,
 			"levelCostFunction": "[level]**1.9 * [baseCost]",
 			"joinedRooms": [],
 			"joinedRoomLevel": 0,
@@ -269,6 +279,7 @@
 		"levelData": {
 			"level": 1,
 			"maxLevel": 5,
+			"baseCost": 75,
 			"levelCostFunction": "[level]**2 * [baseCost]",
 			"joinedRooms": [],
 			"joinedRoomLevel": 0,
@@ -281,6 +292,33 @@
 		},
 		"drawData": {
 			"color": [80, 80, 80],
+			"textColor": [55, 55, 55],
+			"image": false
+		}
+	},
+	"shop": {
+		"name": "Shop",
+		"resource": {
+			"type": "Caps",
+			"amount": 0.0,
+			"time": 40
+		},
+		"levelData": {
+			"level": 1,
+			"maxLevel": 3,
+			"baseCost": 20,
+			"levelCostFunction": "[level]**2 * [baseCost]",
+			"joinedRooms": [],
+			"joinedRoomLevel": 0,
+			"maxJoinedRooms": 2
+		},
+		"dwellers": [],
+		"dimensions": {
+			"width": 1,
+			"height": 1
+		},
+		"drawData": {
+			"color": [81, 41, 133],
 			"textColor": [55, 55, 55],
 			"image": false
 		}
