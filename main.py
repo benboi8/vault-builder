@@ -17,7 +17,7 @@ running = True
 SF = 2
 WIDTH, HEIGHT = 640 * SF, 360 * SF
 mainWindow = pg.display.set_mode((WIDTH, HEIGHT))
-FPS = 60
+FPS = 30
 
 # paths
 roomImagePath = "assets/rooms/"
@@ -76,6 +76,8 @@ roomInfoLabels = []
 roomWidth = 50
 roomHeight = 50
 numOfStartingRooms = 3
+roomAnimationCounter = 0
+roomAnimationDuration = FPS * 2
 
 # settings button info
 settingsButtonListData = [
@@ -263,6 +265,7 @@ class ToggleButton:
 		if self.hasImage:
 			ScaleImage(self.imageData[0], (self.rect.w, self.rect.h), self.imageData[1])
 			self.image = pg.image.load(self.imageData[1])
+			self.image.convert()
 
 	def Draw(self):
 		if not self.hasImage:
@@ -342,6 +345,7 @@ class HoldButton:
 		if self.hasImage:
 			ScaleImage(self.imageData[0], (self.rect.w, self.rect.h), self.imageData[1])
 			self.image = pg.image.load(self.imageData[1])
+			self.image.convert()
 
 	def Draw(self):
 		if not self.hasImage:
@@ -622,6 +626,10 @@ class Room:
 
 		self.seconds = []
 		self.counter = 0
+		self.numOfFrames = 2
+		self.overlayAnimation = []
+		self.currentFrame = 0
+		self.resourcesAvaiable = False
 		self.resource = None
 		for resource in allResources:
 			if resource.roomType == self.resourceType:
@@ -633,6 +641,10 @@ class Room:
 	def Rescale(self):
 		self.width, self.height = roomWidth * self.roomData["dimensions"]["width"] * SF, roomHeight * self.roomData["dimensions"]["height"] * SF
 		self.rect = pg.Rect(self.pos[0] * SF, self.pos[1] * SF, self.width, self.height)
+		for frame in range(1, self.numOfFrames+1):
+			imagePath = "GAME/RESOURCE COLLECTION OVERLAY animated " + str(frame) + ".png"
+			ScaleImage(buttonPath + imagePath, (self.rect.w, self.rect.h), tempButtonPath + imagePath)
+			self.overlayAnimation.append(pg.image.load(tempButtonPath + imagePath))
 
 	def CalculateCosts(self):
 		self.cost = self.baseCost
@@ -652,23 +664,33 @@ class Room:
 		if self.selected:
 			DrawRectOutline(self.surface, colLightGreen, self.rect, 1.5 * SF)
 
+		if self.resourcesAvaiable:
+			self.DrawOverlay()
+
+	def DrawOverlay(self):
+		if roomAnimationCounter <= roomAnimationDuration / 2:
+			self.currentFrame = 0
+		else:
+			self.currentFrame = 1
+		self.surface.blit(self.overlayAnimation[self.currentFrame], self.rect)
+
 	def UpdateRect(self, pos):
 		x, y = pos
 		self.rect = pg.Rect(x, y, self.rect.w, self.rect.h)
 
 	def Timer(self):
-		second = dt.datetime.utcnow().second
-		if second not in self.seconds:
-			self.seconds.append(second)
-			self.counter += 1
+		if not self.resourcesAvaiable:
+			second = dt.datetime.utcnow().second
+			if second not in self.seconds:
+				self.seconds.append(second)
+				self.counter += 1
 
-		if len(self.seconds) >= min(60, self.workTime):
-			self.seconds = []
+			if len(self.seconds) >= min(60, self.workTime):
+				self.seconds = []
 
-		if self.counter >= self.workTime:
-			self.counter = 0
-			self.seconds = []
-			self.AddResource()
+			if self.counter >= self.workTime:
+				self.seconds = []
+				self.resourcesAvaiable = True
 
 	def AddResource(self):
 		if self.resource != None:
@@ -677,6 +699,11 @@ class Room:
 			else:
 				self.resource.value = self.resource.maxAmount
 			self.resource.UpdateRect()
+
+	def CollectResources(self):
+		self.resourcesAvaiable = False
+		self.counter = 0
+		self.AddResource()
 
 
 class Resource:
@@ -900,12 +927,13 @@ def DrawLoop():
 	for resource in allResources:
 		resource.Draw()
 
-	DrawRooms()
 	
 	if gameState == "BUILD":
 		if len(tempRooms) > 0:
 			for placementOption in placementOptions:
 				DrawRectOutline(mainWindow, colOrange, placementOption, 4)
+	
+	DrawRooms()
 
 	if gameState == "CONFIRM QUIT":
 		DrawConfirmQuit()
@@ -1119,25 +1147,35 @@ def IncreaseBuildArea():
 
 def RoomClicked(room):
 	global roomInfoLabels
-	for obj in roomInfoLabels:
-		if obj in allProgressBars:
-			allProgressBars.remove(obj)
-	roomInfoLabels = []
-	roomInfoLabels = []
-	for r in allRooms:
-		r.selected = False			
 
 	if room != False:
-		roomNameLabel = Label(mainWindow, (50, 305, 540, 50), "NONE", (colLightGray, room.color), ("{name}: level: {lvl}".format(name=room.name, lvl=room.level), room.color, 14, "top-center"), [True, False, True], [roomInfoLabels])
-		x, y, w, h = 500, 315, 30, 30
-		if room.level < room.maxLevel:
-			upgradeRoom = HoldButton(mainWindow, (x, y, w, h), ("NONE", "UPGRADE ROOM") ,(colWhite, colLightGray), ("Upgrade", colDarkGray), {"room": room}, [roomInfoLabels, allButtons], extraText=[(room.upgradeCost, (x + w // 2, y + h // 2, w, h))])
-		roomInfo = HoldButton(mainWindow, (x + w + 10, y, w, h), ("NONE", "ROOM INFO") ,(colWhite, colLightGray), ("Info", colDarkGray), {"room": room}, [roomInfoLabels, allButtons])
-		for resource in allResources:
-			if room.resourceType == resource.roomType:
-				if room.name != "Lift":
-					resourceProgressBar = ProgressBar(mainWindow, (90, 330, 400, 15), len(resource.seconds) / resource.workTime, (room.color, room.color), ("", colLightGray), [True, True], [roomInfoLabels, allProgressBars], [room])
-		room.selected = True
+		if room.resourcesAvaiable:
+			room.CollectResources()
+		else:
+			for obj in roomInfoLabels:
+				if obj in allProgressBars:
+					allProgressBars.remove(obj)
+			roomInfoLabels = []
+			for r in allRooms:
+				r.selected = False
+
+			roomNameLabel = Label(mainWindow, (50, 305, 540, 50), "NONE", (colLightGray, room.color), ("{name}: level: {lvl}".format(name=room.name, lvl=room.level), room.color, 14, "top-center"), [True, False, True], [roomInfoLabels])
+			x, y, w, h = 500, 315, 30, 30
+			if room.level < room.maxLevel:
+				upgradeRoom = HoldButton(mainWindow, (x, y, w, h), ("NONE", "UPGRADE ROOM") ,(colWhite, colLightGray), ("Upgrade", colDarkGray), {"room": room}, [roomInfoLabels, allButtons], extraText=[(room.upgradeCost, (x + w // 2, y + h // 2, w, h))])
+			roomInfo = HoldButton(mainWindow, (x + w + 10, y, w, h), ("NONE", "ROOM INFO") ,(colWhite, colLightGray), ("Info", colDarkGray), {"room": room}, [roomInfoLabels, allButtons])
+			for resource in allResources:
+				if room.resourceType == resource.roomType:
+					if room.name != "Lift":
+						resourceProgressBar = ProgressBar(mainWindow, (90, 330, 400, 15), len(resource.seconds) / resource.workTime, (room.color, room.color), ("", colLightGray), [True, True], [roomInfoLabels, allProgressBars], [room])
+			room.selected = True
+	else:
+		for obj in roomInfoLabels:
+			if obj in allProgressBars:
+				allProgressBars.remove(obj)
+		roomInfoLabels = []
+		for r in allRooms:
+			r.selected = False
 
 
 def UpgradeRoom(button):
@@ -1448,7 +1486,8 @@ def SaveRoom(path=saveRoomPath):
 		"numOfRooms": 0,
 		"roomRects": [],
 		"roomNames": [],
-		"roomIndexs": []
+		"roomIndexs": [],
+		"roomLevels": []
 	}
 	for room in allRooms[numOfStartingRooms:]:
 		roomData["numOfRooms"] += 1
@@ -1460,6 +1499,7 @@ def SaveRoom(path=saveRoomPath):
 				index = buildingPages.index(page)
 				break
 		roomData["roomIndexs"].append(index)
+		roomData["roomLevels"].append(room.level)
 
 	with open(path, "w") as saveFile:
 		json.dump(roomData, fp=saveFile, indent=2)
@@ -1508,7 +1548,9 @@ def LoadRoom(path=loadRoomPath):
 			rect = roomData["roomRects"][i]	
 			name = roomData["roomNames"][i]	
 			index = roomData["roomIndexs"][i]
+			level = roomData["roomLevels"][i]
 			room = Room(mainWindow, (rect[0], rect[1]), roomDataFilePath, name)
+			room.level = level
 			buildingPages[index].append(room)
 			allRooms.append(room)
 
@@ -1540,6 +1582,14 @@ def Quit():
 	running = False
 	RoomClicked(False)
 	Save()
+
+
+def UpdateAnimations():
+	global roomAnimationCounter
+	if roomAnimationCounter + 1 > roomAnimationDuration:
+		roomAnimationCounter = 0
+	else:
+		roomAnimationCounter += 1
 
 
 def HandleKeyboard(event):
@@ -1584,6 +1634,7 @@ GetBuildPageRowHeights()
 GetBuildScrollColumnWidths()
 DrawLoop()
 while running:
+	clock.tick(FPS)
 	for event in pg.event.get():
 		HandleKeyboard(event)
 
@@ -1607,3 +1658,6 @@ while running:
 			room.Timer()
 
 	DrawLoop()
+	UpdateAnimations()
+
+pg.quit()
