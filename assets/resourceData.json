@@ -51,7 +51,7 @@
 		"name": "Caps",
 		"roomType": "Caps",
 		"value": {
-			"startValue": 1000000,
+			"startValue": 100,
 			"minimum": 0,
 			"maximum": 1000000,
 			"valuePerMin": 10,

@@ -4,6 +4,9 @@ import datetime as dt
 import cv2
 import json
 from PIL import Image
+import os
+from os import listdir
+from os.path import isfile, join
 
 # initialise pygame
 pg.init()
@@ -28,10 +31,12 @@ resourceImagePath = "assets/resources"
 scaledResourceImagePath = "temp/assets/resources"
 resourceDataFilePath = "assets/resourceData.json"
 
-saveRoomPath = "saves/roomData.json"
-loadRoomPath = "saves/roomData.json"
-saveGamePath = "saves/gameData.json"
-loadGameData = "saves/gameData.json"
+savePath = "saves/"
+saveNum = 1
+saveRoomPath = "saves/Save {0}/roomData.json".format(saveNum)
+loadRoomPath = "saves/Save {0}/roomData.json".format(saveNum)
+saveGamePath = "saves/Save {0}/gameData.json".format(saveNum)
+loadGameData = "saves/Save {0}/gameData.json".format(saveNum)
 
 buttonPath = "assets/buttons/"
 tempButtonPath = "temp/assets/buttons/"
@@ -88,8 +93,8 @@ roomAnimationDuration = FPS
 
 # settings button info
 settingsButtonListData = [
-("Save", "save", "SAVE"),
-("Load", "load", "LOAD"),
+("Save", "save", "SAVE MENU"),
+("Load", "load", "LOAD MENU"),
 ("Exact", "exact", "EXACT"),
 # ("640x360", "SF 1", "SF 1"),
 # ("1280x720", "SF 2", "SF 2"),
@@ -136,6 +141,8 @@ allResources = []
 placementOptions = []
 quitConfirmLabels = []
 startMenuObjects = []
+saveMenuObjects = []
+loadMenuObjects = []
 
 # demolish
 demolishList = []
@@ -668,17 +675,22 @@ class Room:
 
 		imagePath = self.roomData["drawData"]["image"]
 		if imagePath != False:
-			for frame in range(1, self.numOfFrames+1):
-				ScaleImage(roomImagePath + str(self.name) + str(frame) + ".png", (self.rect.w, self.rect.h), tempRoomImagePath + str(self.name) + str(frame) + ".png")
-				self.animation.append(pg.image.load(tempRoomImagePath + str(self.name) + str(frame) + ".png"))
+			imagePath = self.roomData["drawData"]["image"]
+			ScaleImage(roomImagePath + imagePath, (self.rect.w, self.rect.h * self.numOfFrames), tempRoomImagePath + imagePath)
+			imageSurface = pg.image.load(tempRoomImagePath + imagePath)
 			self.hasImage = True
+			for i in range(self.numOfFrames):
+				imageSubsurface = imageSurface.subsurface(pg.Rect(0, 0 + (i * self.rect.h), self.rect.w, self.rect.h))
+				self.animation.append(imageSubsurface)
 		else:
 			self.hasImage = False
 
-		for frame in range(1, self.numOfFramesOverlay+1):
-			imagePath = "GAME/RESOURCE COLLECTION OVERLAY animated " + str(frame) + ".png"
-			ScaleImage(buttonPath + imagePath, (self.rect.w, self.rect.h), tempButtonPath + imagePath)
-			self.overlayAnimation.append(pg.image.load(tempButtonPath + imagePath))
+		imagePath = "GAME/RESOURCE COLLECTION OVERLAY animated.png"
+		ScaleImage(buttonPath + imagePath, (self.rect.w, self.rect.h * self.numOfFramesOverlay), tempButtonPath + imagePath)
+		imageSurface = pg.image.load(tempButtonPath + imagePath)
+		for i in range(self.numOfFramesOverlay):
+			imageSubsurface = imageSurface.subsurface(pg.Rect(0, 0 + (i * self.rect.h), self.rect.w, self.rect.h))
+			self.overlayAnimation.append(imageSubsurface)
 
 	def CalculateCosts(self):
 		self.cost = self.baseCost
@@ -693,15 +705,11 @@ class Room:
 		otherJoinedRooms = []
 		for joinedRoom in self.joinedRooms:
 			otherJoinedRooms.append(len(joinedRoom.joinedRooms))
-			self.numOfJoinedRooms = max(1, max(otherJoinedRooms)) 
+			self.numOfJoinedRooms = max(1, max(otherJoinedRooms))
 			if self.numOfJoinedRooms > len(self.joinedRooms):
 				self.joinedRooms = joinedRoom.joinedRooms
 
 		self.upgradeCost = round(self.level ** self.multiplier * self.baseCost) * max(1, self.numOfJoinedRooms)
-
-		for i in range(1, self.numOfJoinedRooms):
-			self.upgradeCost *= 0.9
-		self.upgradeCost = round(self.upgradeCost)
 	
 	def Draw(self):
 		# draw room 
@@ -719,10 +727,8 @@ class Room:
 			self.DrawOverlay()
 
 	def DrawAnimation(self):
-		if roomAnimationCounter <= roomAnimationDuration / self.numOfFrames:
-			self.currentFrame = 0
-		else:
-			self.currentFrame = 1
+		self.currentFrame = (round((roomAnimationCounter) / self.numOfFrames) % self.numOfFrames)
+		
 		self.surface.blit(self.animation[self.currentFrame], self.rect)
 
 	def DrawOverlay(self):
@@ -758,7 +764,7 @@ class Room:
 	def AddResource(self):
 		if self.resource != None:
 			if self.resource.value + self.resourceAmount <= self.resource.maxAmount:
-				self.resource.value += round((self.resourceAmount * self.level) * (1.1 * self.numOfJoinedRooms))
+				self.resource.value += round((self.resourceAmount * self.level) * (1.08 * self.numOfJoinedRooms))
 			else:
 				self.resource.value = self.resource.maxAmount
 			self.resource.UpdateRect()
@@ -942,7 +948,10 @@ def CreateSettingsButtons():
 		actionData = buttonData[1]
 		buttonAction = buttonData[2]
 		color = (colWhite, colLightGray)
-		settingsButton = HoldButton(mainWindow, (startX, y, buttonWidth, buttonHeight), ("SETTINGS", buttonAction), color, (name, colDarkGray), actionData, imageData=[buttonPath + "SETTINGS/" + buttonAction + ".png", tempButtonPath + "SETTINGS/" + buttonAction + ".png"])
+		if buttonAction in allActions:
+			settingsButton = ToggleButton(mainWindow, (startX, y, buttonWidth, buttonHeight), ("SETTINGS", buttonAction), color, (name, colDarkGray), actionData, imageData=[buttonPath + "SETTINGS/" + buttonAction + ".png", tempButtonPath + "SETTINGS/" + buttonAction + ".png"])
+		else:
+			settingsButton = HoldButton(mainWindow, (startX, y, buttonWidth, buttonHeight), ("SETTINGS", buttonAction), color, (name, colDarkGray), actionData, imageData=[buttonPath + "SETTINGS/" + buttonAction + ".png", tempButtonPath + "SETTINGS/" + buttonAction + ".png"])
 
 
 def CreateStartMenuObjects():
@@ -954,63 +963,85 @@ def CreateStartMenuObjects():
 	exit = HoldButton(mainWindow, (230, 270, 200, 50), ("START MENU", "QUIT"), (colLightGray, colLightGray), ("Quit.", colDarkGray), lists=[allButtons, startMenuObjects], imageData=[buttonPath + "START MENU/QUIT.png", tempButtonPath + "START MENU/QUIT.png"])
 
 
+def CreateSaveMenuObjects():
+	global saveMenuObjects
+	saveMenuObjects = []
+	title = Label(mainWindow, (40, 20, 560, 60), "LOAD MENU", (colLightGray, colLightGray), ["Please choose a save game.", colLightGray, 16, "center-center"], [True, True, False], [saveMenuObjects])
+	save1 = HoldButton(mainWindow, (230, 110, 200, 50), ("LOAD MENU", "SAVE 1"), (colLightGray, colLightGray), ("Save 1", colDarkGray), lists=[allButtons, saveMenuObjects])
+	save2 = HoldButton(mainWindow, (230, 190, 200, 50), ("LOAD MENU", "SAVE 2"), (colLightGray, colLightGray), ("Save 2", colDarkGray), lists=[allButtons, saveMenuObjects])
+	save3 = HoldButton(mainWindow, (230, 270, 200, 50), ("LOAD MENU", "SAVE 3"), (colLightGray, colLightGray), ("Save 3", colDarkGray), lists=[allButtons, saveMenuObjects])
+
+def CreateLoadMenuObjects():
+	global loadMenuObjects
+	loadMenuObjects = []
+	title = Label(mainWindow, (40, 20, 560, 60), "LOAD MENU", (colLightGray, colLightGray), ["Please choose a save game.", colLightGray, 16, "center-center"], [True, True, False], [loadMenuObjects])
+	load1 = HoldButton(mainWindow, (230, 110, 200, 50), ("LOAD MENU", "LOAD 1"), (colLightGray, colLightGray), ("Load save game 1", colDarkGray), lists=[allButtons, loadMenuObjects])
+	load2 = HoldButton(mainWindow, (230, 190, 200, 50), ("LOAD MENU", "LOAD 2"), (colLightGray, colLightGray), ("Load save game 2", colDarkGray), lists=[allButtons, loadMenuObjects])
+	load3 = HoldButton(mainWindow, (230, 270, 200, 50), ("LOAD MENU", "LOAD 3"), (colLightGray, colLightGray), ("Load save game 3", colDarkGray), lists=[allButtons, loadMenuObjects])
+
+
+
 def DrawLoop():
 	global boundingRect
 	mainWindow.fill(colDarkGray)
 
-	if demolishBuildButton.active:
-		DrawRectOutline(mainWindow, colRed, (boundingRect.x - 1.5 * SF, boundingRect.y - 1.5 * SF, boundingRect.w + 2 * SF, boundingRect.h + 3 * SF), 1 * SF)
+	if gameState == "SAVE MENU":
+		DrawSaveMenu()
+	elif gameState == "LOAD MENU":
+		DrawLoadMenu()
 	else:
-		DrawRectOutline(mainWindow, colLightGray, (boundingRect.x - 1.5 * SF, boundingRect.y - 1.5 * SF, boundingRect.w + 2 * SF, boundingRect.h + 3 * SF), 1 * SF)
+		if demolishBuildButton.active:
+			DrawRectOutline(mainWindow, colRed, (boundingRect.x - 1.5 * SF, boundingRect.y - 1.5 * SF, boundingRect.w + 2 * SF, boundingRect.h + 3 * SF), 1 * SF)
+		else:
+			DrawRectOutline(mainWindow, colLightGray, (boundingRect.x - 1.5 * SF, boundingRect.y - 1.5 * SF, boundingRect.w + 2 * SF, boundingRect.h + 3 * SF), 1 * SF)
 
-	for label in allLabels:
-		label.Draw()
+		for label in allLabels:
+			label.Draw()
 
-	for obj in roomInfoLabels:
-		obj.Draw()
-		if obj in allProgressBars:
-			obj.Update(obj.extraData[0].counter / obj.extraData[0].workTime)
+		for obj in roomInfoLabels:
+			obj.Draw()
+			if obj in allProgressBars:
+				obj.Update(obj.extraData[0].counter / obj.extraData[0].workTime)
 
-	for progressBar in allProgressBars:
-		if progressBar not in roomInfoLabels: 
-			progressBar.Draw()
+		for progressBar in allProgressBars:
+			if progressBar not in roomInfoLabels: 
+				progressBar.Draw()
 
-	for button in allButtons:
-		if button.type == "GAME":
-			button.Draw()
-		if gameState == "BUILD":
-			if button.type == "BUILD":
-				if button.action == "ADD ROOM":
-					if button.rect.colliderect(scrollCollideingRect):
+		for button in allButtons:
+			if button.type == "GAME":
+				button.Draw()
+			if gameState == "BUILD":
+				if button.type == "BUILD":
+					if button.action == "ADD ROOM":
+						if button.rect.colliderect(scrollCollideingRect):
+							button.Draw()
+					else:
 						button.Draw()
-				else:
+
+			if gameState == "SETTINGS":
+				if button.type == "SETTINGS":
 					button.Draw()
 
-		if gameState == "SETTINGS":
-			if button.type == "SETTINGS":
-				button.Draw()
-
-	for slider in allSliders:
-		if slider.type == "GAME":
-			slider.Draw()
-		if gameState == "BUILD":
-			if slider.type == "BUILD":
+		for slider in allSliders:
+			if slider.type == "GAME":
 				slider.Draw()
+			if gameState == "BUILD":
+				if slider.type == "BUILD":
+					slider.Draw()
 
-	for resource in allResources:
-		resource.Draw()
+		for resource in allResources:
+			resource.Draw()
 
-	
-	if gameState == "BUILD":
-		if len(tempRooms) > 0:
-			for placementOption in placementOptions:
-				DrawRectOutline(mainWindow, colOrange, placementOption, 4)
-	
-	DrawRooms()
+		
+		if gameState == "BUILD":
+			if len(tempRooms) > 0:
+				for placementOption in placementOptions:
+					DrawRectOutline(mainWindow, colOrange, placementOption, 4)
+		
+		DrawRooms()
 
-	if gameState == "CONFIRM QUIT":
-		DrawConfirmQuit()
-
+		if gameState == "CONFIRM QUIT":
+			DrawConfirmQuit()
 
 	pg.display.update()
 
@@ -1040,6 +1071,15 @@ def DrawStartMenu():
 def DrawConfirmQuit():
 	for label in quitConfirmLabels:
 		label.Draw()
+
+
+def DrawSaveMenu():
+	for obj in saveMenuObjects:
+		obj.Draw()
+
+def DrawLoadMenu():
+	for obj in loadMenuObjects:
+		obj.Draw()
 
 
 def GetBuildPageRowHeights():
@@ -1133,13 +1173,16 @@ def BuildClick(button):
 
 
 def SettingsClick(button):
+	global gameState
 	if button.active:
-		if button.action == "SAVE":
+		if button.action == "SAVE MENU":
 			pressed = True
 			Save()
-		if button.action == "LOAD":
+			# gameState = "SAVE MENU"
+		if button.action == "LOAD MENU":
 			pressed = True
 			Load()
+			# gameState = "LOAD MENU"
 		if button.action == "EXACT":
 			pressed = True
 			ShowExactQuantities()
@@ -1185,8 +1228,9 @@ def ShowExactQuantities():
 
 def NewSave():
 	global gameState
-	gameState = "NONE"
+	gameState = "SAVE MENU"
 	CreateButtons()
+	CreateSaveMenuObjects()
 	CreateResources()
 	AddStartingRooms()
 	GetBuildPageRowHeights()
@@ -1196,7 +1240,8 @@ def NewSave():
 
 def LoadSave():
 	global gameState
-	gameState = "NONE"
+	gameState = "LOAD MENU"
+	CreateSaveMenuObjects()
 	CreateButtons()
 	CreateResources()
 	AddStartingRooms()
@@ -1345,8 +1390,8 @@ def UpgradeRoom(button):
 	for joinedRoom in room.joinedRooms:
 		for resource in allResources:
 			if resource.name == "Caps":
-				if resource.value - joinedRoom.upgradeCost >= resource.minAmount:
-					resource.value -= joinedRoom.upgradeCost
+				if resource.value - joinedRoom.upgradeCost / joinedRoom.numOfJoinedRooms >= resource.minAmount:
+					resource.value -= joinedRoom.upgradeCost / joinedRoom.numOfJoinedRooms
 					joinedRoom.amountSpent += joinedRoom.upgradeCost
 					joinedRoom.Upgrade()
 					x, y, w, h = button.rect
@@ -1679,7 +1724,23 @@ def ScrollBuildMenu(direction):
 				button.rect.x = columnWidths[value - 1] + scrollAmount * buildScrollPages.index(button)
 
 
+def CheckSaveDirectory():
+	rootDirectory = os.getcwd()
+	filesInDirectory = [file for file in listdir(os.path.abspath(savePath))]
+	saveFileNames = ["Save 1", "Save 2", "Save 3"]
+	saveDirectoryExistsList = [False for i in range(len(saveFileNames))]
+
+	for file in filesInDirectory:
+		if file in saveFileNames:
+			saveDirectoryExistsList[saveFileNames.index(file)] = True
+
+	for i, saveDirectoryExists in enumerate(saveDirectoryExistsList):
+		if not saveDirectoryExists:
+			os.mkdir(os.path.abspath(savePath) + "\\" + saveFileNames[i])
+
+
 def Save():
+	CheckSaveDirectory()
 	SaveRoom()
 	SaveGameData()
 

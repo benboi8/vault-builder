@@ -138,7 +138,7 @@
 		},
 		"levelData": {
 			"level": 1,
-			"maxLevel": 1,
+			"maxLevel": 3,
 			"baseCost": 100,
 			"multiplier": 1.7,
 			"joinedRooms": [],
@@ -178,7 +178,7 @@
 		"drawData": {
 			"color": [130, 130, 130],
 			"textColor": [55, 55, 55],
-			"image": "assets/rooms/Lift.png"
+			"image": "Lift.png"
 		}
 	},
 	"vaultDoor": {

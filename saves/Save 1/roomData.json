@@ -1,0 +1,18 @@
+{
+  "numOfRooms": 1,
+  "roomRects": [
+    [
+      225,
+      100
+    ]
+  ],
+  "roomNames": [
+    "water"
+  ],
+  "roomIndexs": [
+    1
+  ],
+  "roomLevels": [
+    1
+  ]
+}
