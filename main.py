@@ -31,12 +31,13 @@ resourceImagePath = "assets/resources"
 scaledResourceImagePath = "temp/assets/resources"
 resourceDataFilePath = "assets/resourceData.json"
 
-savePath = "saves/"
 saveNum = 1
+numOFSaveFiles = 6
+savePath = "saves/"
 saveRoomPath = "saves/Save {0}/roomData.json".format(saveNum)
 loadRoomPath = "saves/Save {0}/roomData.json".format(saveNum)
 saveGamePath = "saves/Save {0}/gameData.json".format(saveNum)
-loadGameData = "saves/Save {0}/gameData.json".format(saveNum)
+loadGamePath = "saves/Save {0}/gameData.json".format(saveNum)
 
 buttonPath = "assets/buttons/"
 tempButtonPath = "temp/assets/buttons/"
@@ -93,8 +94,8 @@ roomAnimationDuration = FPS
 
 # settings button info
 settingsButtonListData = [
-("Save", "save", "SAVE MENU"),
-("Load", "load", "LOAD MENU"),
+("Save", "save", "SAVE"),
+("Load", "load", "LOAD"),
 ("Exact", "exact", "EXACT"),
 # ("640x360", "SF 1", "SF 1"),
 # ("1280x720", "SF 2", "SF 2"),
@@ -153,7 +154,7 @@ scrollCollideingRect = pg.Rect(50 * SF, 310 * SF, 500 * SF, 30 * SF)
 # determines what can be done in game e.g. building rooms
 gameState = "NONE"
 # primary button actions e.g. build button
-allActions = ["BUILD", "SETTINGS", "CONFIRM QUIT", "START MENU"]
+allActions = ["BUILD", "SETTINGS", "CONFIRM QUIT", "START MENU", "SAVE MENU", "LOAD MENU"]
 buttonWidth, buttonHeight = 30, 30
 
 increaseBuildAreaCost = 100
@@ -295,7 +296,6 @@ class ToggleButton:
 			self.surface.blit(self.image, self.rect)
 
 		for textSurfaceData in self.extraTextSurfaces:
-			print(textSurfaceData[0], textSurfaceData[1])
 			self.surface.blit(textSurfaceData[0], textSurfaceData[1])
 
 	def HandleEvent(self, event):
@@ -948,37 +948,60 @@ def CreateSettingsButtons():
 		actionData = buttonData[1]
 		buttonAction = buttonData[2]
 		color = (colWhite, colLightGray)
-		if buttonAction in allActions:
-			settingsButton = ToggleButton(mainWindow, (startX, y, buttonWidth, buttonHeight), ("SETTINGS", buttonAction), color, (name, colDarkGray), actionData, imageData=[buttonPath + "SETTINGS/" + buttonAction + ".png", tempButtonPath + "SETTINGS/" + buttonAction + ".png"])
-		else:
-			settingsButton = HoldButton(mainWindow, (startX, y, buttonWidth, buttonHeight), ("SETTINGS", buttonAction), color, (name, colDarkGray), actionData, imageData=[buttonPath + "SETTINGS/" + buttonAction + ".png", tempButtonPath + "SETTINGS/" + buttonAction + ".png"])
+		settingsButton = HoldButton(mainWindow, (startX, y, buttonWidth, buttonHeight), ("SETTINGS", buttonAction), color, (name, colDarkGray), actionData, imageData=[buttonPath + "SETTINGS/" + buttonAction + ".png", tempButtonPath + "SETTINGS/" + buttonAction + ".png"])
 
 
 def CreateStartMenuObjects():
 	global startMenuObjects
 	startMenuObjects = []
 	title = Label(mainWindow, (40, 20, 560, 60), "START MENU", (colLightGray, colLightGray), ["Vault builder", colLightGray, 16, "center-center"], [True, True, False], [startMenuObjects])
-	startNewSave = HoldButton(mainWindow, (230, 110, 200, 50), ("START MENU", "NEW SAVE"), (colLightGray, colLightGray), ("Start new save game.", colDarkGray), lists=[allButtons, startMenuObjects], imageData=[buttonPath + "START MENU/NEW SAVE.png", tempButtonPath + "START MENU/NEW SAVE.png"])
-	loadSave = HoldButton(mainWindow, (230, 190, 200, 50), ("START MENU", "LOAD SAVE"), (colLightGray, colLightGray), ("Load previous save.", colDarkGray), lists=[allButtons, startMenuObjects], imageData=[buttonPath + "START MENU/LOAD SAVE.png", tempButtonPath + "START MENU/LOAD SAVE.png"])
+	startNewSave = HoldButton(mainWindow, (230, 110, 200, 50), ("START MENU", "SAVE MENU"), (colLightGray, colLightGray), ("Start new save game.", colDarkGray), lists=[allButtons, startMenuObjects], imageData=[buttonPath + "START MENU/NEW SAVE.png", tempButtonPath + "START MENU/NEW SAVE.png"])
+	loadSave = HoldButton(mainWindow, (230, 190, 200, 50), ("START MENU", "LOAD MENU"), (colLightGray, colLightGray), ("Load previous save.", colDarkGray), lists=[allButtons, startMenuObjects], imageData=[buttonPath + "START MENU/LOAD SAVE.png", tempButtonPath + "START MENU/LOAD SAVE.png"])
 	exit = HoldButton(mainWindow, (230, 270, 200, 50), ("START MENU", "QUIT"), (colLightGray, colLightGray), ("Quit.", colDarkGray), lists=[allButtons, startMenuObjects], imageData=[buttonPath + "START MENU/QUIT.png", tempButtonPath + "START MENU/QUIT.png"])
 
 
 def CreateSaveMenuObjects():
-	global saveMenuObjects
+	global saveMenuObjects, saveMenuButtonCollisionRect
 	saveMenuObjects = []
-	title = Label(mainWindow, (40, 20, 560, 60), "LOAD MENU", (colLightGray, colLightGray), ["Please choose a save game.", colLightGray, 16, "center-center"], [True, True, False], [saveMenuObjects])
-	save1 = HoldButton(mainWindow, (230, 110, 200, 50), ("LOAD MENU", "SAVE 1"), (colLightGray, colLightGray), ("Save 1", colDarkGray), lists=[allButtons, saveMenuObjects])
-	save2 = HoldButton(mainWindow, (230, 190, 200, 50), ("LOAD MENU", "SAVE 2"), (colLightGray, colLightGray), ("Save 2", colDarkGray), lists=[allButtons, saveMenuObjects])
-	save3 = HoldButton(mainWindow, (230, 270, 200, 50), ("LOAD MENU", "SAVE 3"), (colLightGray, colLightGray), ("Save 3", colDarkGray), lists=[allButtons, saveMenuObjects])
+	title = Label(mainWindow, (40, 20, 560, 60), "SAVE MENU", (colLightGray, colLightGray), ["Please choose a save game.", colLightGray, 16, "center-center"], [True, True, False], [saveMenuObjects])
+	backButton = HoldButton(mainWindow, (230, 300, 200, 50), ("SAVE MENU", "BACK"), (colLightGray, colLightGray), ("Back", colDarkGray), lists=[allButtons, saveMenuObjects])
+	x, y, w, h = 110, 85, 200, 50
+	saveMenuButtonCollisionRect = pg.Rect(x * SF, y * SF, 410 * SF,  300 * SF)
+	for i in range(1, numOFSaveFiles+1):
+		save = HoldButton(mainWindow, (x, y, w, h), ("SAVE MENU", "SAVE {0}".format(i)), (colLightGray, colLightGray), ("Save {0}".format(i), colDarkGray), lists=[allButtons, saveMenuObjects])
+		y += h + 10
+		if y > 250:
+			y = 85
+			x += w + 10
+
+
+def ScrollSaveMenu(direction):
+	for obj in saveMenuObjects:
+		if obj in allButtons:
+			if obj.action != "BACK":
+				if direction == "left":
+					if obj.action == "SAVE {0}".format(1):
+						if obj.rect.x > 110:
+							obj.rect.x -= obj.rect.w + (10 * SF)
+				if direction == "right":
+					if obj.action == "SAVE {0}".format(numOFSaveFiles):
+						if obj.rect.x < 110:
+							obj.rect.x += obj.rect.w + (10 * SF)
+
 
 def CreateLoadMenuObjects():
-	global loadMenuObjects
+	global loadMenuObjects, loadMenuButtonCollisionRect
 	loadMenuObjects = []
 	title = Label(mainWindow, (40, 20, 560, 60), "LOAD MENU", (colLightGray, colLightGray), ["Please choose a save game.", colLightGray, 16, "center-center"], [True, True, False], [loadMenuObjects])
-	load1 = HoldButton(mainWindow, (230, 110, 200, 50), ("LOAD MENU", "LOAD 1"), (colLightGray, colLightGray), ("Load save game 1", colDarkGray), lists=[allButtons, loadMenuObjects])
-	load2 = HoldButton(mainWindow, (230, 190, 200, 50), ("LOAD MENU", "LOAD 2"), (colLightGray, colLightGray), ("Load save game 2", colDarkGray), lists=[allButtons, loadMenuObjects])
-	load3 = HoldButton(mainWindow, (230, 270, 200, 50), ("LOAD MENU", "LOAD 3"), (colLightGray, colLightGray), ("Load save game 3", colDarkGray), lists=[allButtons, loadMenuObjects])
-
+	backButton = HoldButton(mainWindow, (230, 300, 200, 50), ("LOADMENU", "BACK"), (colLightGray, colLightGray), ("Back", colDarkGray), lists=[allButtons, loadMenuObjects])
+	x, y, w, h = 110, 85, 200, 50
+	loadMenuButtonCollisionRect = pg.Rect(x * SF, y * SF, 410 * SF,  300 * SF)
+	for i in range(1, numOFSaveFiles+1):
+		load = HoldButton(mainWindow, (x, y, w, h), ("LOAD MENU", "LOAD {0}".format(i)), (colLightGray, colLightGray), ("Load {0}".format(i), colDarkGray), lists=[allButtons, loadMenuObjects])
+		y += h + 10
+		if y > 250:
+			y = 85
+			x += w + 10
 
 
 def DrawLoop():
@@ -1075,10 +1098,19 @@ def DrawConfirmQuit():
 
 def DrawSaveMenu():
 	for obj in saveMenuObjects:
-		obj.Draw()
+		if obj in allButtons:
+			if obj.rect.colliderect(saveMenuButtonCollisionRect):
+				obj.Draw()	
+			
+		else:
+			obj.Draw()
+
 
 def DrawLoadMenu():
 	for obj in loadMenuObjects:
+		if obj in allButtons:
+			if obj.rect.colliderect(loadMenuButtonCollisionRect):
+				obj.Draw()
 		obj.Draw()
 
 
@@ -1175,14 +1207,12 @@ def BuildClick(button):
 def SettingsClick(button):
 	global gameState
 	if button.active:
-		if button.action == "SAVE MENU":
+		if button.action == "SAVE":
 			pressed = True
-			Save()
-			# gameState = "SAVE MENU"
-		if button.action == "LOAD MENU":
+			Save(roomPath=saveRoomPath, gameDataPath=saveGamePath)
+		if button.action == "LOAD":
 			pressed = True
-			Load()
-			# gameState = "LOAD MENU"
+			Load(roomPath=loadRoomPath, gameDataPath=loadGamePath)
 		if button.action == "EXACT":
 			pressed = True
 			ShowExactQuantities()
@@ -1198,6 +1228,36 @@ def SettingsClick(button):
 		if button.action == "EXIT":
 			pressed = True
 			QuitMenu()
+
+
+def SaveMenuClick(button):
+	global saveNum, gameState, saveRoomPath, saveGamePath
+	pressed = False
+	if button.active:
+		for i in range(1, numOFSaveFiles+1):
+			if button.action == "SAVE {0}".format(i):
+				saveNum = i
+				gameState = "NONE"
+				pressed = True
+
+	saveRoomPath = "saves/Save {0}/roomData.json".format(saveNum)
+	saveGamePath = "saves/Save {0}/gameData.json".format(saveNum)
+
+
+def LoadMenuClick(button):
+	global saveNum, gameState, loadRoomPath, loadGamePath
+	pressed = False
+	if button.active:
+		for i in range(1, numOFSaveFiles+1):
+			if button.action == "LOAD {0}".format(i):
+				saveNum = i
+				gameState = "NONE"
+				pressed = True
+
+	loadRoomPath = "saves/Save {0}/roomData.json".format(saveNum)
+	loadGamePath = "saves/Save {0}/gameData.json".format(saveNum)
+	if pressed:
+		Load(roomPath=loadRoomPath, gameDataPath=loadGamePath)
 
 
 def QuitButtonClick(button):
@@ -1241,42 +1301,43 @@ def NewSave():
 def LoadSave():
 	global gameState
 	gameState = "LOAD MENU"
-	CreateSaveMenuObjects()
 	CreateButtons()
+	CreateLoadMenuObjects()
 	CreateResources()
 	AddStartingRooms()
 	GetBuildPageRowHeights()
 	GetBuildScrollColumnWidths()
-	Load()
 	StartGame()
 
 
 def PrimaryButtonPress(event):
 	global gameState
 	if gameState != "START MENU":
-		if event.type == pg.MOUSEBUTTONUP:
-			if event.button == 1:
-				for button in allButtons:
-					if gameState == "CONFIRM QUIT":
-						QuitButtonClick(button)
-					else:
-						if button.active:
-							if button.action in allActions:
-								gameState = button.action
-								# prevent multiple buttons being active
-								for b in allButtons:
-									if b.type == "GAME":
-										if b != button:
-											b.active = False
-								return
-						else:
-							if gameState != "BUILD":
-								gameState = "NONE"
-								CancelBuild()
+		if gameState != "SAVE MENU":
+			if gameState != "LOAD MENU":
+				if event.type == pg.MOUSEBUTTONUP:
+					if event.button == 1:
+						for button in allButtons:
+							if gameState == "CONFIRM QUIT":
+								QuitButtonClick(button)
 							else:
-								if button.action == "BUILD":
-									gameState = "NONE"
-									CancelBuild()
+								if button.active:
+									if button.action in allActions:
+										gameState = button.action
+										# prevent multiple buttons being active
+										for b in allButtons:
+											if b.type == "GAME":
+												if b != button:
+													b.active = False
+										return
+								else:
+									if gameState != "BUILD":
+										gameState = "NONE"
+										CancelBuild()
+									else:
+										if button.action == "BUILD":
+											gameState = "NONE"
+											CancelBuild()
 
 
 def SecondaryButtonPress(event):
@@ -1286,8 +1347,13 @@ def SecondaryButtonPress(event):
 			if not pressed:
 				if gameState == "NONE":
 					HasRoomBeenClicked()
-				
+
 				for button in allButtons:
+					if gameState == "SAVE MENU":
+						SaveMenuClick(button)
+					if gameState == "LOAD MENU":
+						LoadMenuClick(button)
+				
 					if button.active:
 						if button.action == "BUILD PAGE DOWN":
 							BuildPage("down")
@@ -1727,7 +1793,10 @@ def ScrollBuildMenu(direction):
 def CheckSaveDirectory():
 	rootDirectory = os.getcwd()
 	filesInDirectory = [file for file in listdir(os.path.abspath(savePath))]
-	saveFileNames = ["Save 1", "Save 2", "Save 3"]
+	saveFileNames = []
+	for i in range(1, numOFSaveFiles+1):
+		saveFileNames.append("Save {0}".format(i))
+
 	saveDirectoryExistsList = [False for i in range(len(saveFileNames))]
 
 	for file in filesInDirectory:
@@ -1739,17 +1808,16 @@ def CheckSaveDirectory():
 			os.mkdir(os.path.abspath(savePath) + "\\" + saveFileNames[i])
 
 
-def Save():
+def Save(roomPath=saveRoomPath, gameDataPath=saveGamePath):
 	CheckSaveDirectory()
-	SaveRoom()
-	SaveGameData()
+	SaveRoom(roomPath)
+	SaveGameData(gameDataPath)
 
 
-def Load():
-	global gameState
-	gameState = "NONE"
-	LoadGameData()
-	LoadRoom()
+def Load(roomPath=loadRoomPath, gameDataPath=loadGamePath):
+	CreateLoadMenuObjects()
+	LoadRoom(roomPath)
+	LoadGameData(gameDataPath)
 
 
 def SaveRoom(path=saveRoomPath):
@@ -1828,7 +1896,7 @@ def LoadRoom(path=loadRoomPath):
 			allRooms.append(room)
 
 
-def LoadGameData(path=loadGameData):
+def LoadGameData(path=loadGamePath):
 	global buildPageMax
 	with open(path, "r") as loadFile:
 		gameData = json.load(loadFile)
@@ -1858,7 +1926,7 @@ def Quit():
 	global running
 	running = False
 	RoomClicked(False)
-	Save()
+	Save(roomPath=saveRoomPath, gameDataPath=saveGamePath)
 
 
 def UpdateAnimations():
@@ -1882,31 +1950,42 @@ def HandleKeyboard(event):
 		if event.key == pg.K_ESCAPE:
 			QuitMenu()
 
-	if event.type == pg.KEYDOWN:
-		if event.key == pg.K_UP:
-			BuildPage("up")
-		if event.key == pg.K_DOWN:
-			BuildPage("down")
+	if gameState != "START MENU":
+		if gameState != "SAVE MENU":
+			if gameState != "LOAD MENU":
+				if event.type == pg.KEYDOWN:
+					if event.key == pg.K_UP:
+						BuildPage("up")
+					if event.key == pg.K_DOWN:
+						BuildPage("down")
 
-		if event.key == pg.K_b:
-			if gameState != "BUILD":
-				gameState = "BUILD"
-				buildButton.active = True
-			else:
-				gameState = "NONE"
-				buildButton.active = False
+					if event.key == pg.K_b:
+						if gameState != "BUILD":
+							gameState = "BUILD"
+							buildButton.active = True
+						else:
+							gameState = "NONE"
+							buildButton.active = False
 
-		if gameState == "BUILD":
-			if event.key == pg.K_LEFT:
-				ScrollBuildMenu("left")
-			if event.key == pg.K_RIGHT:
-				ScrollBuildMenu("right")
+					if gameState == "BUILD":
+						if event.key == pg.K_LEFT:
+							ScrollBuildMenu("left")
+						if event.key == pg.K_RIGHT:
+							ScrollBuildMenu("right")
 
-	if event.type == pg.MOUSEBUTTONDOWN:
-		if event.button == 4:
-			BuildPage("up")
-		if event.button == 5:
-			BuildPage("down")
+				if event.type == pg.MOUSEBUTTONDOWN:
+					if event.button == 4:
+						BuildPage("up")
+					if event.button == 5:
+						BuildPage("down")
+		else:
+			if event.type == pg.KEYDOWN:
+				if event.key == pg.K_LEFT:
+					print("LEFT")
+					# ScrollSaveMenu("left")
+				if event.key == pg.K_RIGHT:
+					print("RIGHT")
+					# ScrollSaveMenu("right")
 
 
 def StartGame():
@@ -1961,12 +2040,12 @@ def StartMenu():
 					if obj.active:
 						if obj.action == "QUIT":
 							running = False
-						if obj.action == "NEW SAVE":
+						if obj.action == "SAVE MENU":
+							running = False
 							NewSave()
+						if obj.action == "LOAD MENU":
 							running = False
-						if obj.action == "LOAD SAVE":
 							LoadSave()
-							running = False
 
 		DrawStartMenu()
 
