@@ -10,8 +10,9 @@
 			"level": 1,
 			"maxLevel": 3,
 			"baseCost": 20,
-			"multiplier": 1.7,
+			"levelCostFunction": "[level]**1.7 * [baseCost]",
 			"joinedRooms": [],
+			"joinedRoomLevel": 0,
 			"maxJoinedRooms": 3
 		},
 		"dwellers": [],
@@ -36,8 +37,9 @@
 			"level": 1,
 			"maxLevel": 3,
 			"baseCost": 20,
-			"multiplier": 1.7,
+			"levelCostFunction": "[level]**1.7 * [baseCost]",
 			"joinedRooms": [],
+			"joinedRoomLevel": 0,
 			"maxJoinedRooms": 3
 		},
 		"dwellers": [],
@@ -62,8 +64,9 @@
 			"level": 1,
 			"maxLevel": 3,
 			"baseCost": 20,
-			"multiplier": 1.7,
+			"levelCostFunction": "[level]**1.7 * [baseCost]",
 			"joinedRooms": [],
+			"joinedRoomLevel": 0,
 			"maxJoinedRooms": 3
 		},
 		"dwellers": [],
@@ -81,15 +84,16 @@
 		"name": "Labatory",
 		"resource": {
 			"type": "experiments",
-			"amount": 0,
+			"amount": 0.0,
 			"time": 0
 		},
 		"levelData": {
 			"level": 1,
 			"maxLevel": 3,
 			"baseCost": 50,
-			"multiplier": 1.6,
+			"levelCostFunction": "[level]**1.6 * [baseCost]",
 			"joinedRooms": [],
+			"joinedRoomLevel": 0,
 			"maxJoinedRooms": 2
 		},
 		"dwellers": [],
@@ -107,15 +111,16 @@
 		"name": "Lounge",
 		"resource": {
 			"type": "dwellers",
-			"amount": 0,
+			"amount": 0.0,
 			"time": 60
 		},
 		"levelData": {
 			"level": 1,
 			"maxLevel": 3,
 			"baseCost": 30,
-			"multiplier": 1.6,
+			"levelCostFunction": "[level]**1.6 * [baseCost]",
 			"joinedRooms": [],
+			"joinedRoomLevel": 0,
 			"maxJoinedRooms": 2
 		},
 		"dwellers": [],
@@ -133,15 +138,16 @@
 		"name": "Control room",
 		"resource": {
 			"type": "wasteland",
-			"amount": 0,
+			"amount": 0.0,
 			"time": 60
 		},
 		"levelData": {
 			"level": 1,
 			"maxLevel": 1,
 			"baseCost": 100,
-			"multiplier": 1.7,
+			"levelCostFunction": "[level]**1.7 * [baseCost]",
 			"joinedRooms": [],
+			"joinedRoomLevel": 0,
 			"maxJoinedRooms": 0
 		},
 		"dwellers": [],
@@ -159,15 +165,16 @@
 		"name": "Lift",
 		"resource": {
 			"type": "none",
-			"amount": 0,
+			"amount": 0.0,
 			"time": 0
 		},
 		"levelData": {
 			"level": 1,
 			"maxLevel": 1,
 			"baseCost": 10,
-			"multiplier": 1.7,
+			"levelCostFunction": "[level]**1.7 * [baseCost]",
 			"joinedRooms": [],
+			"joinedRoomLevel": 0,
 			"maxJoinedRooms": 0
 		},
 		"dwellers": [],
@@ -178,22 +185,23 @@
 		"drawData": {
 			"color": [130, 130, 130],
 			"textColor": [55, 55, 55],
-			"image": "assets/rooms/Lift.png"
+			"image": false
 		}
 	},
 	"vaultDoor": {
 		"name": "Vault Door",
 		"resource": {
 			"type": "security",
-			"amount": 0,
+			"amount": 0.0,
 			"time": 0
 		},
 		"levelData": {
 			"level": 1,
 			"maxLevel": 5,
-			"baseCost": 100,
-			"multiplier": 1.9,
+			"baseCost": 10,
+			"levelCostFunction": "[level]**1.9 * [baseCost]",
 			"joinedRooms": [],
+			"joinedRoomLevel": 0,
 			"maxJoinedRooms": 0
 		},
 		"dwellers": [],
@@ -211,16 +219,17 @@
 		"name": "Radio",
 		"resource": {
 			"type": "happiness",
-			"amount": 0,
+			"amount": 0.0,
 			"time": 360
 		},
 		"levelData": {
 			"level": 1,
 			"maxLevel": 5,
 			"baseCost": 50,
-			"multiplier": 1.8,
+			"levelCostFunction": "[level]**1.8 * [baseCost]",
 			"joinedRooms": [],
-			"maxJoinedRooms": 2
+			"joinedRoomLevel": 0,
+			"maxJoinedRooms": 3
 		},
 		"dwellers": [],
 		"dimensions": {
@@ -237,15 +246,16 @@
 		"name": "Training Room",
 		"resource": {
 			"type": "stat",
-			"amount": 0,
+			"amount": 0.0,
 			"time": 0
 		},
 		"levelData": {
 			"level": 1,
 			"maxLevel": 4,
 			"baseCost": 35,
-			"multiplier": 1.9,
+			"levelCostFunction": "[level]**1.9 * [baseCost]",
 			"joinedRooms": [],
+			"joinedRoomLevel": 0,
 			"maxJoinedRooms": 3
 		},
 		"dwellers": [],
@@ -263,15 +273,16 @@
 		"name": "Security",
 		"resource": {
 			"type": "security",
-			"amount": 0,
+			"amount": 0.0,
 			"time": 120
 		},
 		"levelData": {
 			"level": 1,
 			"maxLevel": 5,
 			"baseCost": 75,
-			"multiplier": 2,
+			"levelCostFunction": "[level]**2 * [baseCost]",
 			"joinedRooms": [],
+			"joinedRoomLevel": 0,
 			"maxJoinedRooms": 2
 		},
 		"dwellers": [],
@@ -289,16 +300,17 @@
 		"name": "Shop",
 		"resource": {
 			"type": "Caps",
-			"amount": 10,
+			"amount": 0.0,
 			"time": 40
 		},
 		"levelData": {
 			"level": 1,
 			"maxLevel": 3,
 			"baseCost": 20,
-			"multiplier": 1.7,
+			"levelCostFunction": "[level]**2 * [baseCost]",
 			"joinedRooms": [],
-			"maxJoinedRooms": 3
+			"joinedRoomLevel": 0,
+			"maxJoinedRooms": 2
 		},
 		"dwellers": [],
 		"dimensions": {

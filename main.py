@@ -21,7 +21,7 @@ FPS = 30
 
 # paths
 roomImagePath = "assets/rooms/"
-scaledRoomImagePath = "temp/assets/rooms/"
+tempRoomImagePath = "temp/assets/rooms/"
 roomDataFilePath = "assets/roomData.json"
 
 resourceImagePath = "assets/resources"
@@ -45,7 +45,9 @@ colRed = (200, 0, 0)
 colGreen = (0, 200, 0)
 colBlue = (0, 0, 200)
 colOrange = (255, 145, 0)
+colLightRed = (255, 48, 0)
 colLightGreen = (0, 255, 48)
+colLightBlue = (48, 0, 255)
 
 colMoneyResource = (133, 187, 101)
 
@@ -76,8 +78,13 @@ roomInfoLabels = []
 roomWidth = 50
 roomHeight = 50
 numOfStartingRooms = 3
+
+# animaiton
+roomOverlayAnimationCounter = 0
+roomOverlayAnimationDuration = FPS * 2
+
 roomAnimationCounter = 0
-roomAnimationDuration = FPS * 2
+roomAnimationDuration = FPS
 
 # settings button info
 settingsButtonListData = [
@@ -101,6 +108,7 @@ resourceList = [
 # pages
 buildPageMin = 1
 buildPageMax = 6
+buildPageMinUpgrade = 6
 buildPageMaxUpgrade = 16
 
 buildPageMin = min(1, buildPageMin)
@@ -247,6 +255,7 @@ class ToggleButton:
 		self.actionData = actionData
 		self.extraTextSurfaces = []
 		self.extraText = extraText
+
 		for listToAppend in lists:
 			listToAppend.append(self)
 
@@ -264,7 +273,7 @@ class ToggleButton:
 		self.extraTextSurfaces = [] 
 		for textData in self.extraText:
 			textSurface = FONT.render(str(textData[0]), True, self.textColor)
-			self.extraTextSurfaces.append((textSurface, (textData[1][0] * SF) - textSurface.get_width() // 2, (textData[1][1] * SF) - textSurface.get_height() // 2))
+			self.extraTextSurfaces.append((textSurface, ((textData[1][0] * SF) - textSurface.get_width() // 2, (textData[1][1] * SF) - textSurface.get_height() // 2)))
 
 		if self.hasImage:
 			ScaleImage(self.imageData[0], (self.rect.w, self.rect.h), self.imageData[1])
@@ -279,6 +288,7 @@ class ToggleButton:
 			self.surface.blit(self.image, self.rect)
 
 		for textSurfaceData in self.extraTextSurfaces:
+			print(textSurfaceData[0], textSurfaceData[1])
 			self.surface.blit(textSurfaceData[0], textSurfaceData[1])
 
 	def HandleEvent(self, event):
@@ -616,8 +626,9 @@ class Room:
 		self.maxLevel = roomData["levelData"]["maxLevel"]
 		self.baseCost = roomData["levelData"]["baseCost"]
 		self.joinedRooms = roomData["levelData"]["joinedRooms"]
-		self.joinedRoomLevel = roomData["levelData"]["joinedRoomLevel"]
+		self.joinedRoomMax = roomData["levelData"]["maxJoinedRooms"]
 		self.dwellersWorking = roomData["dwellers"]
+		self.joinedRooms.append(self)
 
 		self.selected = False
 		self.showingInfo = False
@@ -631,9 +642,16 @@ class Room:
 
 		self.seconds = []
 		self.counter = 0
-		self.numOfFrames = 2
+		self.numOfJoinedRooms = 0
+
+		self.numOfFramesOverlay = 2
 		self.overlayAnimation = []
+		self.currentFrameOverlay = 0
+
+		self.numOfFrames = 4
+		self.animation = []
 		self.currentFrame = 0
+
 		self.resourcesAvaiable = False
 		self.resource = None
 		self.amountSpent = 0
@@ -647,25 +665,52 @@ class Room:
 	def Rescale(self):
 		self.width, self.height = roomWidth * self.roomData["dimensions"]["width"] * SF, roomHeight * self.roomData["dimensions"]["height"] * SF
 		self.rect = pg.Rect(self.pos[0] * SF, self.pos[1] * SF, self.width, self.height)
-		for frame in range(1, self.numOfFrames+1):
+
+		imagePath = self.roomData["drawData"]["image"]
+		if imagePath != False:
+			for frame in range(1, self.numOfFrames+1):
+				ScaleImage(roomImagePath + str(self.name) + str(frame) + ".png", (self.rect.w, self.rect.h), tempRoomImagePath + str(self.name) + str(frame) + ".png")
+				self.animation.append(pg.image.load(tempRoomImagePath + str(self.name) + str(frame) + ".png"))
+			self.hasImage = True
+		else:
+			self.hasImage = False
+
+		for frame in range(1, self.numOfFramesOverlay+1):
 			imagePath = "GAME/RESOURCE COLLECTION OVERLAY animated " + str(frame) + ".png"
 			ScaleImage(buttonPath + imagePath, (self.rect.w, self.rect.h), tempButtonPath + imagePath)
 			self.overlayAnimation.append(pg.image.load(tempButtonPath + imagePath))
 
 	def CalculateCosts(self):
 		self.cost = self.baseCost
-		self.upgradeCost = round(self.level ** self.multiplier * self.baseCost)
+		self.UpdateCost()
 
 	def Upgrade(self):
 		if self.level + 1 <= self.maxLevel:
 			self.level += 1
-			self.upgradeCost = round(self.level ** self.multiplier * self.baseCost)
+			self.UpdateCost()
 
+	def UpdateCost(self):
+		otherJoinedRooms = []
+		for joinedRoom in self.joinedRooms:
+			otherJoinedRooms.append(len(joinedRoom.joinedRooms))
+			self.numOfJoinedRooms = max(1, max(otherJoinedRooms)) 
+			if self.numOfJoinedRooms > len(self.joinedRooms):
+				self.joinedRooms = joinedRoom.joinedRooms
+
+		self.upgradeCost = round(self.level ** self.multiplier * self.baseCost) * max(1, self.numOfJoinedRooms)
+
+		for i in range(1, self.numOfJoinedRooms):
+			self.upgradeCost *= 0.9
+		self.upgradeCost = round(self.upgradeCost)
+	
 	def Draw(self):
 		# draw room 
-		pg.draw.rect(self.surface, self.color, self.rect)
-		# draw name
-		self.surface.blit(self.textSurface, self.rect)
+		if self.hasImage:
+			self.DrawAnimation()
+		else:
+			pg.draw.rect(self.surface, self.color, self.rect)
+			# draw name
+			self.surface.blit(self.textSurface, self.rect)
 
 		if self.selected:
 			DrawRectOutline(self.surface, colLightGreen, self.rect, 1.5 * SF)
@@ -673,12 +718,24 @@ class Room:
 		if self.resourcesAvaiable:
 			self.DrawOverlay()
 
-	def DrawOverlay(self):
-		if roomAnimationCounter <= roomAnimationDuration / 2:
+	def DrawAnimation(self):
+		if roomAnimationCounter <= roomAnimationDuration / self.numOfFrames:
 			self.currentFrame = 0
 		else:
 			self.currentFrame = 1
-		self.surface.blit(self.overlayAnimation[self.currentFrame], self.rect)
+		self.surface.blit(self.animation[self.currentFrame], self.rect)
+
+	def DrawOverlay(self):
+		if roomOverlayAnimationCounter <= roomOverlayAnimationDuration / self.numOfFramesOverlay:
+			self.currentFrameOverlay = 0
+		else:
+			self.currentFrameOverlay = 1
+		self.surface.blit(self.overlayAnimation[self.currentFrameOverlay], self.rect)
+
+	def DrawJoined(self):
+		if len(self.joinedRooms) > 1:
+			for joinedRoom in self.joinedRooms:
+				pg.draw.aaline(self.surface, colBlack, (self.rect.x + self.rect.w // 2, self.rect.y + self.rect.h // 2), (joinedRoom.rect.x + joinedRoom.rect.w // 2, joinedRoom.rect.y + joinedRoom.rect.h // 2))
 
 	def UpdateRect(self, pos):
 		x, y = pos
@@ -701,7 +758,7 @@ class Room:
 	def AddResource(self):
 		if self.resource != None:
 			if self.resource.value + self.resourceAmount <= self.resource.maxAmount:
-				self.resource.value += self.resourceAmount * self.level
+				self.resource.value += round((self.resourceAmount * self.level) * (1.1 * self.numOfJoinedRooms))
 			else:
 				self.resource.value = self.resource.maxAmount
 			self.resource.UpdateRect()
@@ -864,9 +921,10 @@ def CreateBuildingButtons():
 			roomData = json.load(roomDataFile)
 			cost = roomData[actionData]["levelData"]["baseCost"]
 			color = roomData[actionData]["drawData"]["color"]
-		roomButton = HoldButton(mainWindow, rect, ("BUILD", "ADD ROOM"), (color, color), (name, colBlack), actionData, [allButtons], [(cost, (rect.x +  rect.w // 2, rect.y +  rect.h // 2, rect.w, rect.h))]) 
+		roomButton = HoldButton(mainWindow, rect, ("BUILD", "ADD ROOM"), (color, color), (name, colBlack), actionData, [allButtons], [(cost, pg.Rect(rect.x + rect.w // 2, rect.y +  rect.h // 2, rect.w, rect.h))]) 
 		buildScrollPages.append(roomButton)
 
+	decreaseBuildArea = HoldButton(mainWindow, (10, 190, buttonWidth, buttonHeight), ("BUILD", "DECREASE BUILD AREA"), (colRed, colLightRed), ("Shrink", colBlack), imageData=[buttonPath + "BUILD/shrink.png", tempButtonPath + "BUILD/shrink.png"])
 	increaseBuildArea = HoldButton(mainWindow, (10, 230, buttonWidth, buttonHeight), ("BUILD", "INCREASE BUILD AREA"), (colGreen, colLightGreen), ("Expand", colBlack), imageData=[buttonPath + "BUILD/expand.png", tempButtonPath + "BUILD/expand.png"], extraText=[(str(increaseBuildAreaCost), (10 + buttonWidth // 2, 230 + buttonHeight // 2, buttonWidth, buttonHeight))])
 	cancelBuildButton = HoldButton(mainWindow, (10, 270, buttonWidth, buttonHeight), ("BUILD", "CANCEL"), (colRed, colCancel), ("Cancel", colDarkGray), imageData=[buttonPath + "BUILD/cancel.png", tempButtonPath + "BUILD/cancel.png"])
 	demolishBuildButton = ToggleButton(mainWindow, (595, 315, buttonWidth + 10, buttonHeight + 10), ("BUILD", "DEMOLISH"), (colRed, colDemolish), ("Demolish", colDarkGray), imageData=[buttonPath + "BUILD/demolish.png", tempButtonPath + "BUILD/demolish.png"])
@@ -891,71 +949,68 @@ def CreateStartMenuObjects():
 	global startMenuObjects
 	startMenuObjects = []
 	title = Label(mainWindow, (40, 20, 560, 60), "START MENU", (colLightGray, colLightGray), ["Vault builder", colLightGray, 16, "center-center"], [True, True, False], [startMenuObjects])
-	startNewSave = HoldButton(mainWindow, (140, 110, 360, 60), ("START MENU", "NEW SAVE"), (colLightGray, colLightGray), ("Start new save game.", colDarkGray), extraText=[("This will overwrite any previous save games.", (220, 130, 230, 60))], lists=[allButtons, startMenuObjects])
-	loadSave = HoldButton(mainWindow, (140, 190, 360, 60), ("START MENU", "LOAD SAVE"), (colLightGray, colLightGray), ("Load previous save.", colDarkGray), lists=[allButtons, startMenuObjects])
-	exitSave = HoldButton(mainWindow, (140, 270, 360, 60), ("START MENU", "QUIT"), (colLightGray, colLightGray), ("Quit.", colDarkGray), lists=[allButtons, startMenuObjects])
+	startNewSave = HoldButton(mainWindow, (230, 110, 200, 50), ("START MENU", "NEW SAVE"), (colLightGray, colLightGray), ("Start new save game.", colDarkGray), lists=[allButtons, startMenuObjects], imageData=[buttonPath + "START MENU/NEW SAVE.png", tempButtonPath + "START MENU/NEW SAVE.png"])
+	loadSave = HoldButton(mainWindow, (230, 190, 200, 50), ("START MENU", "LOAD SAVE"), (colLightGray, colLightGray), ("Load previous save.", colDarkGray), lists=[allButtons, startMenuObjects], imageData=[buttonPath + "START MENU/LOAD SAVE.png", tempButtonPath + "START MENU/LOAD SAVE.png"])
+	exit = HoldButton(mainWindow, (230, 270, 200, 50), ("START MENU", "QUIT"), (colLightGray, colLightGray), ("Quit.", colDarkGray), lists=[allButtons, startMenuObjects], imageData=[buttonPath + "START MENU/QUIT.png", tempButtonPath + "START MENU/QUIT.png"])
 
 
 def DrawLoop():
 	global boundingRect
 	mainWindow.fill(colDarkGray)
 
-	if gameState == "START MENU":
-		for obj in startMenuObjects:
-			obj.Draw()
+	if demolishBuildButton.active:
+		DrawRectOutline(mainWindow, colRed, (boundingRect.x - 1.5 * SF, boundingRect.y - 1.5 * SF, boundingRect.w + 2 * SF, boundingRect.h + 3 * SF), 1 * SF)
 	else:
-		if demolishBuildButton.active:
-			DrawRectOutline(mainWindow, colRed, (boundingRect.x - 1.5 * SF, boundingRect.y - 1.5 * SF, boundingRect.w + 2 * SF, boundingRect.h + 3 * SF), 1 * SF)
-		else:
-			DrawRectOutline(mainWindow, colLightGray, (boundingRect.x - 1.5 * SF, boundingRect.y - 1.5 * SF, boundingRect.w + 2 * SF, boundingRect.h + 3 * SF), 1 * SF)
+		DrawRectOutline(mainWindow, colLightGray, (boundingRect.x - 1.5 * SF, boundingRect.y - 1.5 * SF, boundingRect.w + 2 * SF, boundingRect.h + 3 * SF), 1 * SF)
 
-		for label in allLabels:
-			label.Draw()
+	for label in allLabels:
+		label.Draw()
 
-		for obj in roomInfoLabels:
-			obj.Draw()
-			if obj in allProgressBars:
-				obj.Update(obj.extraData[0].counter / obj.extraData[0].workTime)
+	for obj in roomInfoLabels:
+		obj.Draw()
+		if obj in allProgressBars:
+			obj.Update(obj.extraData[0].counter / obj.extraData[0].workTime)
 
-		for progressBar in allProgressBars:
-			if progressBar not in roomInfoLabels: 
-				progressBar.Draw()
+	for progressBar in allProgressBars:
+		if progressBar not in roomInfoLabels: 
+			progressBar.Draw()
 
-		for button in allButtons:
-			if button.type == "GAME":
-				button.Draw()
-			if gameState == "BUILD":
-				if button.type == "BUILD":
-					if button.action == "ADD ROOM":
-						if button.rect.colliderect(scrollCollideingRect):
-							button.Draw()
-					else:
+	for button in allButtons:
+		if button.type == "GAME":
+			button.Draw()
+		if gameState == "BUILD":
+			if button.type == "BUILD":
+				if button.action == "ADD ROOM":
+					if button.rect.colliderect(scrollCollideingRect):
 						button.Draw()
-
-			if gameState == "SETTINGS":
-				if button.type == "SETTINGS":
+				else:
 					button.Draw()
 
-		for slider in allSliders:
-			if slider.type == "GAME":
-				slider.Draw()
-			if gameState == "BUILD":
-				if slider.type == "BUILD":
-					slider.Draw()
+		if gameState == "SETTINGS":
+			if button.type == "SETTINGS":
+				button.Draw()
 
-		for resource in allResources:
-			resource.Draw()
-
-		
+	for slider in allSliders:
+		if slider.type == "GAME":
+			slider.Draw()
 		if gameState == "BUILD":
-			if len(tempRooms) > 0:
-				for placementOption in placementOptions:
-					DrawRectOutline(mainWindow, colOrange, placementOption, 4)
-		
-		DrawRooms()
+			if slider.type == "BUILD":
+				slider.Draw()
 
-		if gameState == "CONFIRM QUIT":
-			DrawConfirmQuit()
+	for resource in allResources:
+		resource.Draw()
+
+	
+	if gameState == "BUILD":
+		if len(tempRooms) > 0:
+			for placementOption in placementOptions:
+				DrawRectOutline(mainWindow, colOrange, placementOption, 4)
+	
+	DrawRooms()
+
+	if gameState == "CONFIRM QUIT":
+		DrawConfirmQuit()
+
 
 	pg.display.update()
 
@@ -965,6 +1020,21 @@ def DrawRooms():
 		for room in page:
 			if boundingRect.colliderect(room.rect):
 				room.Draw()
+
+	for room in allRooms:
+		if boundingRect.colliderect(room.rect):
+			room.DrawJoined()
+
+
+def DrawStartMenu():
+	mainWindow.fill(colDarkGray)
+	for obj in startMenuObjects:
+		obj.Draw()
+
+	if gameState == "CONFIRM QUIT":
+		DrawConfirmQuit()
+
+	pg.display.update()
 
 
 def DrawConfirmQuit():
@@ -1040,6 +1110,7 @@ def BuildClick(button):
 			if button.action == "ADD ROOM" and not demolishBuildButton.active:
 				pressed = True
 				AddRoom(button.actionData)
+		
 		if button.action == "CANCEL":
 			pressed = True
 			CancelBuild()
@@ -1055,7 +1126,10 @@ def BuildClick(button):
 			ScrollBuildMenu("left")
 		if button.action == "INCREASE BUILD AREA":
 			pressed = True
-			IncreaseBuildArea(button)
+			IncreaseBuildArea(button)		
+		if button.action == "DECREASE BUILD AREA":
+			pressed = True
+			DecreaseBuildArea()
 
 
 def SettingsClick(button):
@@ -1117,6 +1191,19 @@ def NewSave():
 	AddStartingRooms()
 	GetBuildPageRowHeights()
 	GetBuildScrollColumnWidths()
+	StartGame()
+
+
+def LoadSave():
+	global gameState
+	gameState = "NONE"
+	CreateButtons()
+	CreateResources()
+	AddStartingRooms()
+	GetBuildPageRowHeights()
+	GetBuildScrollColumnWidths()
+	Load()
+	StartGame()
 
 
 def PrimaryButtonPress(event):
@@ -1124,17 +1211,27 @@ def PrimaryButtonPress(event):
 	if gameState != "START MENU":
 		if event.type == pg.MOUSEBUTTONUP:
 			if event.button == 1:
-				for button in allButtons:			
+				for button in allButtons:
 					if gameState == "CONFIRM QUIT":
 						QuitButtonClick(button)
 					else:
 						if button.active:
 							if button.action in allActions:
 								gameState = button.action
+								# prevent multiple buttons being active
+								for b in allButtons:
+									if b.type == "GAME":
+										if b != button:
+											b.active = False
 								return
 						else:
-							gameState = "NONE"
-							CancelBuild()	
+							if gameState != "BUILD":
+								gameState = "NONE"
+								CancelBuild()
+							else:
+								if button.action == "BUILD":
+									gameState = "NONE"
+									CancelBuild()
 
 
 def SecondaryButtonPress(event):
@@ -1144,6 +1241,7 @@ def SecondaryButtonPress(event):
 			if not pressed:
 				if gameState == "NONE":
 					HasRoomBeenClicked()
+				
 				for button in allButtons:
 					if button.active:
 						if button.action == "BUILD PAGE DOWN":
@@ -1151,7 +1249,7 @@ def SecondaryButtonPress(event):
 						if button.action == "BUILD PAGE UP":
 							BuildPage("up")
 
-					if gameState == "BUILD":
+					if gameState == "BUILD" and button.type == "BUILD":
 						BuildClick(button)
 
 					if gameState == "SETTINGS":
@@ -1178,6 +1276,35 @@ def IncreaseBuildArea(button):
 					buildPageMax += 1 
 					increaseBuildAreaCost = round(increaseBuildAreaCost * increaseBuildAreaMultiplier)
 					button.UpdateExtraText([(increaseBuildAreaCost, ((button.rect.x // SF) + buttonWidth // 2, (button.rect.y // SF) + buttonHeight // 2, buttonWidth, buttonHeight))])
+
+
+def DecreaseBuildArea():
+	global buildPage, buildPageMax, increaseBuildAreaCost
+	for resource in allResources:
+		if resource.name == "Caps":
+			if resource.value + increaseBuildAreaCost < resource.maxAmount:
+				decrease = True
+				currentBuildPage = buildPage
+				for room in allRooms:
+					while buildPage < buildPageMax:
+						BuildPage("down")
+					if room.rect.y == rowHeights[-2]:
+						decrease = False
+
+				while buildPage > currentBuildPage:
+					BuildPage("up")
+
+				if decrease:
+					if buildPageMax - 1 >= buildPageMinUpgrade:
+						increaseBuildAreaCost = round(increaseBuildAreaCost / increaseBuildAreaMultiplier)
+						resource.value += increaseBuildAreaCost
+						buildPageMax -= 1 
+						if buildPage > buildPageMax:
+							BuildPage("up")
+
+						for button in allButtons:
+							if button.action == "INCREASE BUILD AREA":
+								button.UpdateExtraText([(increaseBuildAreaCost, ((button.rect.x // SF) + buttonWidth // 2, (button.rect.y // SF) + buttonHeight // 2, buttonWidth, buttonHeight))])
 
 
 def RoomClicked(room):
@@ -1215,18 +1342,19 @@ def RoomClicked(room):
 
 def UpgradeRoom(button):
 	room = button.actionData["room"]
-	for resource in allResources:
-		if resource.name == "Caps":
-			if resource.value - room.upgradeCost >= resource.minAmount:
-				resource.value -= room.upgradeCost
-				room.amountSpent += room.upgradeCost
-				room.Upgrade()
-				x, y, w, h = button.rect
-				x /= SF
-				y /= SF
-				w /= SF
-				h /= SF
-				button.UpdateExtraText([(room.upgradeCost, (x + w // 2, y + h // 2, w, h))])
+	for joinedRoom in room.joinedRooms:
+		for resource in allResources:
+			if resource.name == "Caps":
+				if resource.value - joinedRoom.upgradeCost >= resource.minAmount:
+					resource.value -= joinedRoom.upgradeCost
+					joinedRoom.amountSpent += joinedRoom.upgradeCost
+					joinedRoom.Upgrade()
+					x, y, w, h = button.rect
+					x /= SF
+					y /= SF
+					w /= SF
+					h /= SF
+					button.UpdateExtraText([(joinedRoom.upgradeCost, (x + w // 2, y + h // 2, w, h))])
 
 	button.actionData = {"room" : room}
 	RoomClicked(room)
@@ -1306,6 +1434,10 @@ def CheckDemolish(room, direction=(None, None)):
 
 	if remove:
 		roomToDemolish = demolishList[0]
+		for room in allRooms:
+			if roomToDemolish in room.joinedRooms:
+				room.joinedRooms.remove(roomToDemolish)
+
 		if roomToDemolish in allRooms:
 			demolishList = []
 			allRooms.remove(roomToDemolish)
@@ -1324,7 +1456,7 @@ def DemolishBuild():
 	for room in allRooms[numOfStartingRooms:]:
 		if room.rect.collidepoint(pg.mouse.get_pos()):
 			demolishList = []
-			CheckDemolish(room)		
+			CheckDemolish(room)
 
 
 def AddRoom(roomName):
@@ -1353,7 +1485,7 @@ def MoveRoom(event):
 
 def CheckRoomPlacement():
 	global boundingRect
-	# check money, check position and check total number of bulidings.
+	# check total number of bulidings.
 	room = tempRooms[0]
 
 	# position check
@@ -1427,6 +1559,7 @@ def CalculatePossiblePlacements():
 				if rect.x + rect.w < boundX2:
 					if rect.collidelist(allRooms) == -1:
 						validPlacement = True
+
 			if validPlacement:
 				placementOptions.append(rect)
 				validPlacement = False
@@ -1451,6 +1584,41 @@ def PlaceRoom(rect):
 						resource.activeRooms += 1
 
 
+def JoinRoom():
+	for room in allRooms:
+		leftIndex, rightIndex, upIndex, downIndex = CheckAllConnections(room)
+		leftRoom, rightRoom = allRooms[leftIndex], allRooms[rightIndex]
+		room.UpdateCost()
+
+		if leftIndex != -1:
+			if room.joinedRoomMax > 0:
+				if leftRoom.name == room.name:
+					if leftRoom.level == room.level:
+						if len(room.joinedRooms) + 1 <= room.joinedRoomMax:
+							if len(leftRoom.joinedRooms) + 1 <= leftRoom.joinedRoomMax:
+								for joinedRoom in room.joinedRooms:
+									if joinedRoom not in leftRoom.joinedRooms:
+										leftRoom.joinedRooms.append(joinedRoom)
+
+								for joinedRoom in leftRoom.joinedRooms:
+									if joinedRoom not in room.joinedRooms:
+										room.joinedRooms.append(joinedRoom)
+
+		if rightIndex != -1:
+			if room.joinedRoomMax > 0:
+				if rightRoom.name == room.name:
+					if rightRoom.level == room.level:
+						if len(room.joinedRooms) + 1 <= room.joinedRoomMax:
+							if len(rightRoom.joinedRooms) + 1 <= rightRoom.joinedRoomMax:
+								for joinedRoom in room.joinedRooms:
+									if joinedRoom not in rightRoom.joinedRooms:
+										rightRoom.joinedRooms.append(joinedRoom)
+
+								for joinedRoom in rightRoom.joinedRooms:
+									if joinedRoom not in room.joinedRooms:
+										room.joinedRooms.append(joinedRoom)
+
+
 def BuildPage(direction):
 	global buildPage
 	if direction == "down":
@@ -1460,6 +1628,9 @@ def BuildPage(direction):
 			for page in buildingPages: 
 				for room in page:
 					room.rect.y -= room.rect.h
+		else:
+			buildPage = buildPageMax
+
 
 	if direction == "up":
 		if buildPage - 1 >= buildPageMin:
@@ -1468,6 +1639,8 @@ def BuildPage(direction):
 			for page in buildingPages: 
 				for room in page:
 					room.rect.y += room.rect.h
+		else:
+			buildPage = buildPageMin
 	
 	pageBuildNumber.UpdateText(str(buildPage))
 
@@ -1609,9 +1782,13 @@ def QuitMenu():
 	global quitConfirmLabels, gameState
 	quitConfirmLabels = []
 	x, y, w, h = 0, -100, WIDTH // SF, (HEIGHT // SF) + 100
+	# background for menu 
 	quitConfirmLabels.append(Label(mainWindow, (-100, -100, (WIDTH // 2) + 200, (HEIGHT // 2) + 200), "",(colDarkGray, colDarkGray), ("", colLightGray, 32, "center-center"), lists=[quitConfirmLabels]))
+	# main text
 	quitConfirmLabels.append(Label(mainWindow, (x, y, w, h), "CONFIRM QUIT",(colDarkGray, colDarkGray), ("Are you sure you want to quit?", colLightGray, 32, "center-center"), lists=[quitConfirmLabels], extraText=[("All data will be saved on exit.", (x + w // 2, y + h // 1.65, 10, 10))]))
+	# save and exit
 	quitConfirmLabels.append(ToggleButton(mainWindow, ((x + w // 2) - 100 , 240, 200, 50), ("CONFIRM QUIT", "YES"), (colLightGray, colLightGray), ("YES", colDarkGray), lists=[quitConfirmLabels, allButtons], imageData=[buttonPath + "CONFIRM QUIT/YES.png", tempButtonPath + "CONFIRM QUIT/YES.png"]))
+	# reject quit
 	quitConfirmLabels.append(ToggleButton(mainWindow, ((x + w // 2) - 100 , 300, 200, 50), ("CONFIRM QUIT", "NO"), (colLightGray, colLightGray), ("NO", colDarkGray), lists=[quitConfirmLabels, allButtons], imageData=[buttonPath + "CONFIRM QUIT/NO.png", tempButtonPath + "CONFIRM QUIT/NO.png"]))
 	gameState = "CONFIRM QUIT"
 
@@ -1624,11 +1801,16 @@ def Quit():
 
 
 def UpdateAnimations():
-	global roomAnimationCounter
+	global roomAnimationCounter, roomOverlayAnimationCounter
 	if roomAnimationCounter + 1 > roomAnimationDuration:
 		roomAnimationCounter = 0
 	else:
 		roomAnimationCounter += 1
+
+	if roomOverlayAnimationCounter + 1 > roomOverlayAnimationDuration:
+		roomOverlayAnimationCounter = 0
+	else:
+		roomOverlayAnimationCounter += 1
 
 
 def HandleKeyboard(event):
@@ -1666,38 +1848,67 @@ def HandleKeyboard(event):
 			BuildPage("down")
 
 
-# CreateStartMenuObjects()
-CreateButtons()
-CreateResources()
-AddStartingRooms()
-GetBuildPageRowHeights()
-GetBuildScrollColumnWidths()
-DrawLoop()
-while running:
-	clock.tick(FPS)
-	for event in pg.event.get():
-		HandleKeyboard(event)
-
-		if gameState == "BUILD":
-			if len(tempRooms) > 0:
-				MoveRoom(event)
-
-		for button in allButtons:
-			button.HandleEvent(event)
-
-		for slider in allSliders:
-			slider.HandleEvent(event)
-
-		PrimaryButtonPress(event)
-		SecondaryButtonPress(event)
-
-	for resource in allResources:
-		resource.CalculateTime()
-	for room in allRooms:
-		if room.resource != None:
-			room.Timer()
-
+def StartGame():
+	global running
 	DrawLoop()
-	UpdateAnimations()
+
+	while running:
+		clock.tick(FPS)
+		for event in pg.event.get():
+			HandleKeyboard(event)
+
+			if gameState == "BUILD":
+				if len(tempRooms) > 0:
+					MoveRoom(event)
+
+			for button in allButtons:
+				button.HandleEvent(event)
+
+			for slider in allSliders:
+				slider.HandleEvent(event)
+
+			PrimaryButtonPress(event)
+			SecondaryButtonPress(event)
+
+		for resource in allResources:
+			resource.CalculateTime()
+		for room in allRooms:
+			if room.resource != None:
+				room.Timer()
+
+		DrawLoop()
+		UpdateAnimations()
+		JoinRoom()
+
+
+def StartMenu():
+	CreateStartMenuObjects()
+	running = True
+	while running:
+		clock.tick(FPS)
+		for event in pg.event.get():
+			if event.type == pg.QUIT:
+				running = False
+			if event.type == pg.KEYDOWN:
+				if event.key == pg.K_ESCAPE:
+					running = False
+
+			for obj in startMenuObjects:
+				if obj in allButtons:
+					obj.HandleEvent(event)
+
+					if obj.active:
+						if obj.action == "QUIT":
+							running = False
+						if obj.action == "NEW SAVE":
+							NewSave()
+							running = False
+						if obj.action == "LOAD SAVE":
+							LoadSave()
+							running = False
+
+		DrawStartMenu()
+
+StartMenu()
 
 pg.quit()
