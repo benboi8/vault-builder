@@ -962,46 +962,82 @@ def CreateStartMenuObjects():
 
 def CreateSaveMenuObjects():
 	global saveMenuObjects, saveMenuButtonCollisionRect
-	saveMenuObjects = []
-	title = Label(mainWindow, (40, 20, 560, 60), "SAVE MENU", (colLightGray, colLightGray), ["Please choose a save game.", colLightGray, 16, "center-center"], [True, True, False], [saveMenuObjects])
-	backButton = HoldButton(mainWindow, (230, 300, 200, 50), ("SAVE MENU", "BACK"), (colLightGray, colLightGray), ("Back", colDarkGray), lists=[allButtons, saveMenuObjects])
-	x, y, w, h = 110, 85, 200, 50
-	saveMenuButtonCollisionRect = pg.Rect(x * SF, y * SF, 410 * SF,  300 * SF)
+	saveMenuObjects = [[], []]
+	title = Label(mainWindow, (40, 20, 560, 60), "SAVE MENU", (colLightGray, colLightGray), ["Please choose a save game.", colLightGray, 16, "center-center"], [True, True, False], [saveMenuObjects[0]])
+	backButton = HoldButton(mainWindow, (230, 300, 200, 50), ("SAVE MENU", "BACK"), (colLightGray, colLightGray), ("Back", colDarkGray), lists=[allButtons, saveMenuObjects[1]])
+	x, y, w, h = 230, 85, 200, 50
+	numOfCollumns = 1
+	saveMenuButtonCollisionRect = pg.Rect((x - 1) * SF, y * SF, 202 * SF,  300 * SF)
 	for i in range(1, numOFSaveFiles+1):
-		save = HoldButton(mainWindow, (x, y, w, h), ("SAVE MENU", "SAVE {0}".format(i)), (colLightGray, colLightGray), ("Save {0}".format(i), colDarkGray), lists=[allButtons, saveMenuObjects])
+		save = HoldButton(mainWindow, (x, y, w, h), ("SAVE MENU", "SAVE {0}".format(i)), (colLightGray, colLightGray), ("Save {0}".format(i), colDarkGray), lists=[allButtons, saveMenuObjects[1]])
 		y += h + 10
 		if y > 250:
 			y = 85
 			x += w + 10
+			numOfCollumns += 1
 
 
 def ScrollSaveMenu(direction):
-	for obj in saveMenuObjects:
-		if obj in allButtons:
-			if obj.action != "BACK":
+	scrollLeft, scrollRight = False, True
+	for button in saveMenuObjects[1]:
+		if button in allButtons:
+			scrollAmount = button.rect.w + (10 * 2)
+			if button.action != "BACK":
 				if direction == "left":
-					if obj.action == "SAVE {0}".format(1):
-						if obj.rect.x > 110:
-							obj.rect.x -= obj.rect.w + (10 * SF)
+					# index starts at one to avoid the back button
+					firstObj = saveMenuObjects[1][1]
+					if firstObj.rect.x < saveMenuButtonCollisionRect.x:
+						scrollLeft = True
+							
+					if scrollLeft:
+						button.rect.x += scrollAmount
+
 				if direction == "right":
-					if obj.action == "SAVE {0}".format(numOFSaveFiles):
-						if obj.rect.x < 110:
-							obj.rect.x += obj.rect.w + (10 * SF)
+					lastObj = saveMenuObjects[1][-1]
+					if lastObj.rect.x - scrollAmount <= saveMenuButtonCollisionRect.x:
+						scrollRight = False
+						
+					if scrollRight:
+						button.rect.x -= scrollAmount
 
 
 def CreateLoadMenuObjects():
 	global loadMenuObjects, loadMenuButtonCollisionRect
-	loadMenuObjects = []
-	title = Label(mainWindow, (40, 20, 560, 60), "LOAD MENU", (colLightGray, colLightGray), ["Please choose a save game.", colLightGray, 16, "center-center"], [True, True, False], [loadMenuObjects])
-	backButton = HoldButton(mainWindow, (230, 300, 200, 50), ("LOADMENU", "BACK"), (colLightGray, colLightGray), ("Back", colDarkGray), lists=[allButtons, loadMenuObjects])
-	x, y, w, h = 110, 85, 200, 50
-	loadMenuButtonCollisionRect = pg.Rect(x * SF, y * SF, 410 * SF,  300 * SF)
+	loadMenuObjects = [[], []]
+	title = Label(mainWindow, (40, 20, 560, 60), "LOAD MENU", (colLightGray, colLightGray), ["Please choose a save game.", colLightGray, 16, "center-center"], [True, True, False], [loadMenuObjects[0]])
+	backButton = HoldButton(mainWindow, (230, 300, 200, 50), ("LOADMENU", "BACK"), (colLightGray, colLightGray), ("Back", colDarkGray), lists=[allButtons, loadMenuObjects[1]])
+	x, y, w, h = 230, 85, 200, 50
+	loadMenuButtonCollisionRect = pg.Rect((x - 1) * SF, y * SF, 202 * SF,  300 * SF)
 	for i in range(1, numOFSaveFiles+1):
-		load = HoldButton(mainWindow, (x, y, w, h), ("LOAD MENU", "LOAD {0}".format(i)), (colLightGray, colLightGray), ("Load {0}".format(i), colDarkGray), lists=[allButtons, loadMenuObjects])
+		load = HoldButton(mainWindow, (x, y, w, h), ("LOAD MENU", "LOAD {0}".format(i)), (colLightGray, colLightGray), ("Load {0}".format(i), colDarkGray), lists=[allButtons, loadMenuObjects[1]])
 		y += h + 10
 		if y > 250:
 			y = 85
 			x += w + 10
+	
+
+def ScrollLoadMenu(direction):
+	scrollLeft, scrollRight = False, True
+	for button in loadMenuObjects[1]:
+		if button in allButtons:
+			scrollAmount = button.rect.w + (10 * 2)
+			if button.action != "BACK":
+				if direction == "left":
+					# index starts at one to avoid the back button
+					firstObj = loadMenuObjects[1][1]
+					if firstObj.rect.x < loadMenuButtonCollisionRect.x:
+						scrollLeft = True
+							
+					if scrollLeft:
+						button.rect.x += scrollAmount
+
+				if direction == "right":
+					lastObj = loadMenuObjects[1][-1]
+					if lastObj.rect.x - scrollAmount <= loadMenuButtonCollisionRect.x:
+						scrollRight = False
+						
+					if scrollRight:
+						button.rect.x -= scrollAmount
 
 
 def DrawLoop():
@@ -1097,21 +1133,21 @@ def DrawConfirmQuit():
 
 
 def DrawSaveMenu():
-	for obj in saveMenuObjects:
-		if obj in allButtons:
-			if obj.rect.colliderect(saveMenuButtonCollisionRect):
-				obj.Draw()	
-			
-		else:
-			obj.Draw()
+	for label in saveMenuObjects[0]:
+		label.Draw()
+
+	for button in saveMenuObjects[1]:
+		if button.rect.colliderect(saveMenuButtonCollisionRect):
+			button.Draw()	
 
 
 def DrawLoadMenu():
-	for obj in loadMenuObjects:
-		if obj in allButtons:
-			if obj.rect.colliderect(loadMenuButtonCollisionRect):
-				obj.Draw()
-		obj.Draw()
+	for label in loadMenuObjects[0]:
+		label.Draw()
+
+	for button in loadMenuObjects[1]:
+		if button.rect.colliderect(loadMenuButtonCollisionRect):
+			button.Draw()	
 
 
 def GetBuildPageRowHeights():
@@ -1798,6 +1834,7 @@ def CheckSaveDirectory():
 		saveFileNames.append("Save {0}".format(i))
 
 	saveDirectoryExistsList = [False for i in range(len(saveFileNames))]
+	newDirectorys = []
 
 	for file in filesInDirectory:
 		if file in saveFileNames:
@@ -1805,7 +1842,57 @@ def CheckSaveDirectory():
 
 	for i, saveDirectoryExists in enumerate(saveDirectoryExistsList):
 		if not saveDirectoryExists:
-			os.mkdir(os.path.abspath(savePath) + "\\" + saveFileNames[i])
+			newPath = os.path.abspath(savePath) + "\\" + saveFileNames[i]
+			os.mkdir(newPath)
+			newDirectorys.append(newPath)
+
+	for path in newDirectorys:
+		roomData, gameData = SetDeafaultSaveValues() 
+		os.chdir(path)
+
+		with open("roomData.json", "w") as saveGameFile:
+			json.dump(roomData, fp=saveGameFile, indent=2)
+
+		with open("gameData.json", "w") as saveGameFile:
+			json.dump(gameData, fp=saveGameFile, indent=2)
+
+		os.chdir(rootDirectory)
+
+
+def SetDeafaultSaveValues():
+	roomData = {
+		"numOfRooms": 0,
+		"roomRects": [],
+		"roomNames": [],
+		"roomIndexs": [],
+		"roomLevels": []
+	}
+
+	with open(resourceDataFilePath, "r") as resourceDataFile:
+		resourceDataValues = json.load(resourceDataFile)
+		gameData = {
+		"resources": {
+			"Water": {
+				"value": resourceDataValues["Water"]["value"]["startValue"],
+				"activeRooms": 0
+			},
+			"Food": {
+				"value": resourceDataValues["Food"]["value"]["startValue"],
+				"activeRooms": 0
+			},
+			"Power": {
+				"value": resourceDataValues["Power"]["value"]["startValue"],
+				"activeRooms": 0
+			},
+			"Caps": {
+				"value": resourceDataValues["Caps"]["value"]["startValue"],
+				"activeRooms": 0
+			}
+		},
+		"buildPage": buildPageMax
+		}
+
+	return roomData, gameData
 
 
 def Save(roomPath=saveRoomPath, gameDataPath=saveGamePath):
@@ -1978,14 +2065,18 @@ def HandleKeyboard(event):
 						BuildPage("up")
 					if event.button == 5:
 						BuildPage("down")
+			else:
+				if event.type == pg.KEYDOWN:
+					if event.key == pg.K_LEFT:
+						ScrollLoadMenu("left")
+					if event.key == pg.K_RIGHT:
+						ScrollLoadMenu("right")
 		else:
 			if event.type == pg.KEYDOWN:
 				if event.key == pg.K_LEFT:
-					print("LEFT")
-					# ScrollSaveMenu("left")
+					ScrollSaveMenu("left")
 				if event.key == pg.K_RIGHT:
-					print("RIGHT")
-					# ScrollSaveMenu("right")
+					ScrollSaveMenu("right")
 
 
 def StartGame():
@@ -2049,6 +2140,7 @@ def StartMenu():
 
 		DrawStartMenu()
 
+CheckSaveDirectory()
 StartMenu()
 
 pg.quit()
