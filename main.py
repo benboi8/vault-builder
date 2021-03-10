@@ -152,7 +152,7 @@ boundingRect = pg.Rect(50.5 * SF, 50.5 * SF, 550 * SF, 249 * SF)
 scrollCollideingRect = pg.Rect(50 * SF, 310 * SF, 500 * SF, 30 * SF)
 
 # determines what can be done in game e.g. building rooms
-gameState = "NONE"
+gameState = "START MENU"
 # primary button actions e.g. build button
 allActions = ["BUILD", "SETTINGS", "CONFIRM QUIT", "START MENU", "SAVE MENU", "LOAD MENU"]
 buttonWidth, buttonHeight = 30, 30
@@ -1005,7 +1005,7 @@ def CreateLoadMenuObjects():
 	global loadMenuObjects, loadMenuButtonCollisionRect
 	loadMenuObjects = [[], []]
 	title = Label(mainWindow, (40, 20, 560, 60), "LOAD MENU", (colLightGray, colLightGray), ["Please choose a save game.", colLightGray, 16, "center-center"], [True, True, False], [loadMenuObjects[0]])
-	backButton = HoldButton(mainWindow, (230, 300, 200, 50), ("LOADMENU", "BACK"), (colLightGray, colLightGray), ("Back", colDarkGray), lists=[allButtons, loadMenuObjects[1]])
+	backButton = HoldButton(mainWindow, (230, 300, 200, 50), ("LOAD MENU", "BACK"), (colLightGray, colLightGray), ("Back", colDarkGray), lists=[allButtons, loadMenuObjects[1]])
 	x, y, w, h = 230, 85, 200, 50
 	loadMenuButtonCollisionRect = pg.Rect((x - 1) * SF, y * SF, 202 * SF,  300 * SF)
 	for i in range(1, numOFSaveFiles+1):
@@ -1044,63 +1044,58 @@ def DrawLoop():
 	global boundingRect
 	mainWindow.fill(colDarkGray)
 
-	if gameState == "SAVE MENU":
-		DrawSaveMenu()
-	elif gameState == "LOAD MENU":
-		DrawLoadMenu()
+	if demolishBuildButton.active:
+		DrawRectOutline(mainWindow, colRed, (boundingRect.x - 1.5 * SF, boundingRect.y - 1.5 * SF, boundingRect.w + 2 * SF, boundingRect.h + 3 * SF), 1 * SF)
 	else:
-		if demolishBuildButton.active:
-			DrawRectOutline(mainWindow, colRed, (boundingRect.x - 1.5 * SF, boundingRect.y - 1.5 * SF, boundingRect.w + 2 * SF, boundingRect.h + 3 * SF), 1 * SF)
-		else:
-			DrawRectOutline(mainWindow, colLightGray, (boundingRect.x - 1.5 * SF, boundingRect.y - 1.5 * SF, boundingRect.w + 2 * SF, boundingRect.h + 3 * SF), 1 * SF)
+		DrawRectOutline(mainWindow, colLightGray, (boundingRect.x - 1.5 * SF, boundingRect.y - 1.5 * SF, boundingRect.w + 2 * SF, boundingRect.h + 3 * SF), 1 * SF)
 
-		for label in allLabels:
-			label.Draw()
+	for label in allLabels:
+		label.Draw()
 
-		for obj in roomInfoLabels:
-			obj.Draw()
-			if obj in allProgressBars:
-				obj.Update(obj.extraData[0].counter / obj.extraData[0].workTime)
+	for obj in roomInfoLabels:
+		obj.Draw()
+		if obj in allProgressBars:
+			obj.Update(obj.extraData[0].counter / obj.extraData[0].workTime)
 
-		for progressBar in allProgressBars:
-			if progressBar not in roomInfoLabels: 
-				progressBar.Draw()
+	for progressBar in allProgressBars:
+		if progressBar not in roomInfoLabels: 
+			progressBar.Draw()
 
-		for button in allButtons:
-			if button.type == "GAME":
-				button.Draw()
-			if gameState == "BUILD":
-				if button.type == "BUILD":
-					if button.action == "ADD ROOM":
-						if button.rect.colliderect(scrollCollideingRect):
-							button.Draw()
-					else:
+	for button in allButtons:
+		if button.type == "GAME":
+			button.Draw()
+		if gameState == "BUILD":
+			if button.type == "BUILD":
+				if button.action == "ADD ROOM":
+					if button.rect.colliderect(scrollCollideingRect):
 						button.Draw()
-
-			if gameState == "SETTINGS":
-				if button.type == "SETTINGS":
+				else:
 					button.Draw()
 
-		for slider in allSliders:
-			if slider.type == "GAME":
-				slider.Draw()
-			if gameState == "BUILD":
-				if slider.type == "BUILD":
-					slider.Draw()
+		if gameState == "SETTINGS":
+			if button.type == "SETTINGS":
+				button.Draw()
 
-		for resource in allResources:
-			resource.Draw()
-
-		
+	for slider in allSliders:
+		if slider.type == "GAME":
+			slider.Draw()
 		if gameState == "BUILD":
-			if len(tempRooms) > 0:
-				for placementOption in placementOptions:
-					DrawRectOutline(mainWindow, colOrange, placementOption, 4)
-		
-		DrawRooms()
+			if slider.type == "BUILD":
+				slider.Draw()
 
-		if gameState == "CONFIRM QUIT":
-			DrawConfirmQuit()
+	for resource in allResources:
+		resource.Draw()
+
+	
+	if gameState == "BUILD":
+		if len(tempRooms) > 0:
+			for placementOption in placementOptions:
+				DrawRectOutline(mainWindow, colOrange, placementOption, 4)
+		
+	DrawRooms()
+
+	if gameState == "CONFIRM QUIT":
+		DrawConfirmQuit()
 
 	pg.display.update()
 
@@ -1118,11 +1113,16 @@ def DrawRooms():
 
 def DrawStartMenu():
 	mainWindow.fill(colDarkGray)
-	for obj in startMenuObjects:
-		obj.Draw()
 
+	if gameState == "START MENU":
+		for obj in startMenuObjects:
+			obj.Draw()
 	if gameState == "CONFIRM QUIT":
 		DrawConfirmQuit()
+	if gameState == "SAVE MENU":
+		DrawSaveMenu()
+	if gameState == "LOAD MENU":
+		DrawLoadMenu()
 
 	pg.display.update()
 
@@ -1267,33 +1267,44 @@ def SettingsClick(button):
 
 
 def SaveMenuClick(button):
-	global saveNum, gameState, saveRoomPath, saveGamePath
+	global saveNum, gameState, loadRoomPath, loadGamePath, saveRoomPath, saveGamePath, running
 	pressed = False
 	if button.active:
+		if button.action == "BACK":
+			gameState = "START MENU"
+
 		for i in range(1, numOFSaveFiles+1):
 			if button.action == "SAVE {0}".format(i):
 				saveNum = i
-				gameState = "NONE"
 				pressed = True
 
 	saveRoomPath = "saves/Save {0}/roomData.json".format(saveNum)
 	saveGamePath = "saves/Save {0}/gameData.json".format(saveNum)
+	loadRoomPath = "saves/Save {0}/roomData.json".format(saveNum)
+	loadGamePath = "saves/Save {0}/gameData.json".format(saveNum)
+	return pressed
 
 
 def LoadMenuClick(button):
-	global saveNum, gameState, loadRoomPath, loadGamePath
+	global saveNum, gameState, loadRoomPath, loadGamePath, saveRoomPath, saveGamePath, running
 	pressed = False
 	if button.active:
+		if button.action == "BACK":
+			gameState = "START MENU"
+
 		for i in range(1, numOFSaveFiles+1):
 			if button.action == "LOAD {0}".format(i):
 				saveNum = i
-				gameState = "NONE"
 				pressed = True
 
 	loadRoomPath = "saves/Save {0}/roomData.json".format(saveNum)
 	loadGamePath = "saves/Save {0}/gameData.json".format(saveNum)
+	saveRoomPath = "saves/Save {0}/roomData.json".format(saveNum)
+	saveGamePath = "saves/Save {0}/gameData.json".format(saveNum)
 	if pressed:
-		Load(roomPath=loadRoomPath, gameDataPath=loadGamePath)
+		Load(loadRoomPath, loadGamePath)
+
+	return pressed
 
 
 def QuitButtonClick(button):
@@ -1325,25 +1336,13 @@ def ShowExactQuantities():
 def NewSave():
 	global gameState
 	gameState = "SAVE MENU"
-	CreateButtons()
 	CreateSaveMenuObjects()
-	CreateResources()
-	AddStartingRooms()
-	GetBuildPageRowHeights()
-	GetBuildScrollColumnWidths()
-	StartGame()
 
 
 def LoadSave():
 	global gameState
 	gameState = "LOAD MENU"
-	CreateButtons()
 	CreateLoadMenuObjects()
-	CreateResources()
-	AddStartingRooms()
-	GetBuildPageRowHeights()
-	GetBuildScrollColumnWidths()
-	StartGame()
 
 
 def PrimaryButtonPress(event):
@@ -1385,11 +1384,6 @@ def SecondaryButtonPress(event):
 					HasRoomBeenClicked()
 
 				for button in allButtons:
-					if gameState == "SAVE MENU":
-						SaveMenuClick(button)
-					if gameState == "LOAD MENU":
-						LoadMenuClick(button)
-				
 					if button.active:
 						if button.action == "BUILD PAGE DOWN":
 							BuildPage("down")
@@ -1926,7 +1920,11 @@ def SaveRoom(path=saveRoomPath):
 			if room in page:
 				index = buildingPages.index(page)
 				break
-		roomData["roomIndexs"].append(index)
+			else:
+				index = None
+				break
+		if index != None:
+			roomData["roomIndexs"].append(index)
 		roomData["roomLevels"].append(room.level)
 
 	with open(path, "w") as saveFile:
@@ -1967,7 +1965,6 @@ def LoadRoom(path=loadRoomPath):
 	global allRooms, buildingPages, buildPage
 	allRooms = []
 	buildPage = buildPageMin
-	pageBuildNumber.UpdateText(str(buildPage))
 
 	AddStartingRooms()
 	with open(path, "r") as loadFile:
@@ -2009,11 +2006,12 @@ def QuitMenu():
 	gameState = "CONFIRM QUIT"
 
 
-def Quit():
+def Quit(save=True):
 	global running
 	running = False
 	RoomClicked(False)
-	Save(roomPath=saveRoomPath, gameDataPath=saveGamePath)
+	if save:
+		Save(roomPath=saveRoomPath, gameDataPath=saveGamePath)
 
 
 def UpdateAnimations():
@@ -2031,56 +2029,63 @@ def UpdateAnimations():
 
 def HandleKeyboard(event):
 	global gameState
-	if event.type == pg.QUIT:
-		QuitMenu()
-	if event.type == pg.KEYDOWN:
-		if event.key == pg.K_ESCAPE:
+	if gameState == "SAVE MENU":
+		if event.type == pg.KEYDOWN:
+			if event.key == pg.K_LEFT:
+				ScrollSaveMenu("left")
+			if event.key == pg.K_RIGHT:
+				ScrollSaveMenu("right")
+
+	elif gameState == "LOAD MENU":
+		if event.type == pg.KEYDOWN:
+			if event.key == pg.K_LEFT:
+				ScrollLoadMenu("left")
+			if event.key == pg.K_RIGHT:
+				ScrollLoadMenu("right")
+
+	elif gameState != "START MENU" and gameState != "SAVE MENU" and gameState != "LOAD MENU":
+		if event.type == pg.QUIT:
 			QuitMenu()
+		if event.type == pg.KEYDOWN:
+			if event.key == pg.K_ESCAPE:
+				QuitMenu()
+		if event.type == pg.KEYDOWN:
+			if event.key == pg.K_UP:
+				BuildPage("up")
+			if event.key == pg.K_DOWN:
+				BuildPage("down")
 
-	if gameState != "START MENU":
-		if gameState != "SAVE MENU":
-			if gameState != "LOAD MENU":
-				if event.type == pg.KEYDOWN:
-					if event.key == pg.K_UP:
-						BuildPage("up")
-					if event.key == pg.K_DOWN:
-						BuildPage("down")
+			if event.key == pg.K_b:
+				if gameState != "BUILD":
+					gameState = "BUILD"
+					buildButton.active = True
+				else:
+					gameState = "NONE"
+					buildButton.active = False
 
-					if event.key == pg.K_b:
-						if gameState != "BUILD":
-							gameState = "BUILD"
-							buildButton.active = True
-						else:
-							gameState = "NONE"
-							buildButton.active = False
-
-					if gameState == "BUILD":
-						if event.key == pg.K_LEFT:
-							ScrollBuildMenu("left")
-						if event.key == pg.K_RIGHT:
-							ScrollBuildMenu("right")
-
-				if event.type == pg.MOUSEBUTTONDOWN:
-					if event.button == 4:
-						BuildPage("up")
-					if event.button == 5:
-						BuildPage("down")
-			else:
-				if event.type == pg.KEYDOWN:
-					if event.key == pg.K_LEFT:
-						ScrollLoadMenu("left")
-					if event.key == pg.K_RIGHT:
-						ScrollLoadMenu("right")
-		else:
-			if event.type == pg.KEYDOWN:
+			if gameState == "BUILD":
 				if event.key == pg.K_LEFT:
-					ScrollSaveMenu("left")
+					ScrollBuildMenu("left")
 				if event.key == pg.K_RIGHT:
-					ScrollSaveMenu("right")
+					ScrollBuildMenu("right")
+
+		if event.type == pg.MOUSEBUTTONDOWN:
+			if event.button == 4:
+				BuildPage("up")
+			if event.button == 5:
+				BuildPage("down")
 
 
 def StartGame():
-	global running
+	global running, gameState
+	running = True
+	CreateButtons()
+	CreateResources()
+	AddStartingRooms()
+	GetBuildPageRowHeights()
+	GetBuildScrollColumnWidths()
+	pageBuildNumber.UpdateText(str(buildPage))
+	gameState = "NONE"
 	DrawLoop()
 
 	while running:
@@ -2115,30 +2120,51 @@ def StartGame():
 def StartMenu():
 	CreateStartMenuObjects()
 	running = True
+	startGame = True
+	pressed = False
 	while running:
 		clock.tick(FPS)
 		for event in pg.event.get():
 			if event.type == pg.QUIT:
 				running = False
+				startGame = False
 			if event.type == pg.KEYDOWN:
 				if event.key == pg.K_ESCAPE:
 					running = False
+					startGame = False
 
+			HandleKeyboard(event)
+
+			for button in allButtons:
+				button.HandleEvent(event)
+		
+		if gameState == "START MENU":
 			for obj in startMenuObjects:
 				if obj in allButtons:
-					obj.HandleEvent(event)
-
 					if obj.active:
 						if obj.action == "QUIT":
 							running = False
+							startGame = False
 						if obj.action == "SAVE MENU":
-							running = False
+							# running = False
 							NewSave()
 						if obj.action == "LOAD MENU":
-							running = False
+							# running = False
 							LoadSave()
 
+		for button in allButtons:
+			if gameState == "SAVE MENU":
+				pressed = SaveMenuClick(button)
+			if gameState == "LOAD MENU":
+				pressed = LoadMenuClick(button)
+			button.active = False
+			if pressed:
+				running = False
+
 		DrawStartMenu()
+
+	if startGame:
+		StartGame()
 
 CheckSaveDirectory()
 StartMenu()
