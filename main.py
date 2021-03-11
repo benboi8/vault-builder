@@ -31,6 +31,8 @@ resourceImagePath = "assets/resources"
 scaledResourceImagePath = "temp/assets/resources"
 resourceDataFilePath = "assets/resourceData.json"
 
+loadMenuTimeFilePath = "saves/lastTime.json"
+
 saveNum = 1
 numOFSaveFiles = 6
 savePath = "saves/"
@@ -157,7 +159,7 @@ gameState = "START MENU"
 allActions = ["BUILD", "SETTINGS", "CONFIRM QUIT", "START MENU", "SAVE MENU", "LOAD MENU"]
 buttonWidth, buttonHeight = 30, 30
 
-increaseBuildAreaCost = 100
+increaseBuildAreaCost = 1000
 increaseBuildAreaMultiplier = 1.4
 
 # used for secondary buttons
@@ -403,6 +405,9 @@ class HoldButton:
 			textSurface = FONT.render(str(textData[0]), True, self.textColor)
 			self.extraTextSurfaces.append((textSurface, ((self.rect.x + self.rect.w // 2) - textSurface.get_width() // 2, (self.rect.y + self.rect.h // 2) - textSurface.get_height() // 2)))
 
+	def UpdateText(self, text):
+		self.textSurface = FONT.render(str(text), True, self.textColor)
+
 	def UpdateExtraText(self, extraText):
 		self.extraTextSurfaces = []
 		for textData in extraText:
@@ -415,7 +420,7 @@ class Slider:
 		"""
 		Parameters:
 			sliderType: tuple of gameState type and slider action
-			colors: tuple of active color and inactive color
+			colors: tuple of border, active color and inactive color
 			textData: tuple of text and text color and antialliasing
 			bounds: tuple of lower bound and upper bound
 			lists: list of lists to add self too
@@ -434,7 +439,7 @@ class Slider:
 		self.aa = textData[2]
 		self.value = round(self.bounds[0], 0)
 		self.active = False
-		self.direction = "right"
+		self.direction = "none"
 		self.Rescale()
 		for listToAppend in lists:
 			listToAppend.append(self)
@@ -443,7 +448,7 @@ class Slider:
 	def Rescale(self):
 		self.rect = pg.Rect(self.originalRect[0] * SF, self.originalRect[1] * SF, self.originalRect[2] * SF, self.originalRect[3] * SF)
 		self.font = pg.font.SysFont("arial", self.aa * SF)
-		self.textSurface = self.font.render(self.text, True, self.textColor)
+		self.textSurface = FONT.render(self.text, True, self.textColor)
 		self.segmentLength = self.rect.w / self.bounds[1]
 		self.sliderRect = pg.Rect(self.rect.x, self.rect.y, max(self.segmentLength, self.textSurface.get_width()), self.rect.h)
 		self.collisionRect = pg.Rect(self.sliderRect.x - self.sliderRect.h // 2, self.sliderRect.y, self.sliderRect.w + self.sliderRect.h, self.sliderRect.h)
@@ -484,7 +489,7 @@ class Slider:
 			self.direction = "left"
 		elif motion[0] > 0:
 			self.direction = "right"
-	
+
 		# set the slider x to mouse x
 		mousePosX = pg.mouse.get_pos()[0]
 		if mousePosX < self.rect.x + self.rect.w - self.sliderRect.w // 2:
@@ -961,83 +966,149 @@ def CreateStartMenuObjects():
 
 
 def CreateSaveMenuObjects():
-	global saveMenuObjects, saveMenuButtonCollisionRect
+	global saveMenuObjects, saveMenuButtonCollisionRect, numOfStartingSaveObjects, numOfSaveColumns
 	saveMenuObjects = [[], []]
 	title = Label(mainWindow, (40, 20, 560, 60), "SAVE MENU", (colLightGray, colLightGray), ["Please choose a save game.", colLightGray, 16, "center-center"], [True, True, False], [saveMenuObjects[0]])
+	# starts at back button
+	numOfStartingSaveObjects = 2
 	backButton = HoldButton(mainWindow, (230, 300, 200, 50), ("SAVE MENU", "BACK"), (colLightGray, colLightGray), ("Back", colDarkGray), lists=[allButtons, saveMenuObjects[1]])
+	slider = Slider(mainWindow, (235, 260, 190, 10), ("SAVE MENU", "SCROLL SAVE MENU"), (colLightGray, colWhite, colLightGray), (" ||| ", colDarkGray, True), (0, 6), lists=[allSliders, saveMenuObjects[1]])
 	x, y, w, h = 230, 85, 200, 50
-	numOfCollumns = 1
 	saveMenuButtonCollisionRect = pg.Rect((x - 1) * SF, y * SF, 202 * SF,  300 * SF)
+	numOfSaveColumns = 1
 	for i in range(1, numOFSaveFiles+1):
 		save = HoldButton(mainWindow, (x, y, w, h), ("SAVE MENU", "SAVE {0}".format(i)), (colLightGray, colLightGray), ("Save {0}".format(i), colDarkGray), lists=[allButtons, saveMenuObjects[1]])
 		y += h + 10
 		if y > 250:
 			y = 85
 			x += w + 10
-			numOfCollumns += 1
+			numOfSaveColumns += 1
 
 
 def ScrollSaveMenu(direction):
+	global numOfStartingSaveObjects
 	scrollLeft, scrollRight = False, True
-	for button in saveMenuObjects[1]:
+	firstObj = saveMenuObjects[1][numOfStartingSaveObjects]
+	lastObj = saveMenuObjects[1][-1]
+	for button in saveMenuObjects[1][numOfStartingSaveObjects:]:
+		scrollAmount = button.rect.w + (10 * 2)
 		if button in allButtons:
-			scrollAmount = button.rect.w + (10 * 2)
-			if button.action != "BACK":
-				if direction == "left":
-					# index starts at one to avoid the back button
-					firstObj = saveMenuObjects[1][1]
-					if firstObj.rect.x < saveMenuButtonCollisionRect.x:
-						scrollLeft = True
-							
-					if scrollLeft:
-						button.rect.x += scrollAmount
+			if direction == "left" or direction == "right":
+				if button.action != "BACK":
+					if direction == "left":
+						if firstObj.rect.x < saveMenuButtonCollisionRect.x:
+							scrollLeft = True
+								
+						if scrollLeft:
+							button.rect.x += scrollAmount
 
-				if direction == "right":
-					lastObj = saveMenuObjects[1][-1]
-					if lastObj.rect.x - scrollAmount <= saveMenuButtonCollisionRect.x:
-						scrollRight = False
-						
-					if scrollRight:
-						button.rect.x -= scrollAmount
+					if direction == "right":
+						if lastObj.rect.x - scrollAmount <= saveMenuButtonCollisionRect.x:
+							scrollRight = False
+							
+						if scrollRight:
+							button.rect.x -= scrollAmount
+
+			elif direction in allSliders:
+				slider = direction
+				value = int(slider.value)
+				if slider.active:
+					if value < slider.bounds[1] / numOfSaveColumns:
+						if firstObj.rect.x < saveMenuButtonCollisionRect.x:
+							scrollLeft = True
+
+						if scrollLeft:
+							button.rect.x += scrollAmount
+
+					if value >= slider.bounds[1] / numOfSaveColumns:
+						if lastObj.rect.x - scrollAmount <= saveMenuButtonCollisionRect.x:
+							scrollRight = False
+
+						if scrollRight:
+							button.rect.x -= scrollAmount
 
 
 def CreateLoadMenuObjects():
-	global loadMenuObjects, loadMenuButtonCollisionRect
+	global loadMenuObjects, loadMenuButtonCollisionRect, numOfStartingLoadObjects, numOfLoadColumns
 	loadMenuObjects = [[], []]
 	title = Label(mainWindow, (40, 20, 560, 60), "LOAD MENU", (colLightGray, colLightGray), ["Please choose a save game.", colLightGray, 16, "center-center"], [True, True, False], [loadMenuObjects[0]])
+	# starts at back button
+	numOfStartingLoadObjects = 2
 	backButton = HoldButton(mainWindow, (230, 300, 200, 50), ("LOAD MENU", "BACK"), (colLightGray, colLightGray), ("Back", colDarkGray), lists=[allButtons, loadMenuObjects[1]])
+	slider = Slider(mainWindow, (235, 260, 190, 10), ("LOAD MENU", "SCROLL LOAD MENU"), (colLightGray, colWhite, colLightGray), (" ||| ", colDarkGray, True), (0, 6), lists=[allSliders, loadMenuObjects[1]])
 	x, y, w, h = 230, 85, 200, 50
 	loadMenuButtonCollisionRect = pg.Rect((x - 1) * SF, y * SF, 202 * SF,  300 * SF)
+	numOfLoadColumns = 1
 	for i in range(1, numOFSaveFiles+1):
 		load = HoldButton(mainWindow, (x, y, w, h), ("LOAD MENU", "LOAD {0}".format(i)), (colLightGray, colLightGray), ("Load {0}".format(i), colDarkGray), lists=[allButtons, loadMenuObjects[1]])
+		UpdateLoadMenuButtonText(load)
 		y += h + 10
 		if y > 250:
 			y = 85
 			x += w + 10
-	
+			numOfLoadColumns += 1
+
 
 def ScrollLoadMenu(direction):
+	global numOfStartingLoadObjects, numOfSaveColumns
+	firstObj = loadMenuObjects[1][numOfStartingLoadObjects]
+	lastObj = loadMenuObjects[1][-1]
 	scrollLeft, scrollRight = False, True
-	for button in loadMenuObjects[1]:
+	for button in loadMenuObjects[1][numOfStartingLoadObjects:]:
+		scrollAmount = button.rect.w + (10 * 2)
 		if button in allButtons:
-			scrollAmount = button.rect.w + (10 * 2)
-			if button.action != "BACK":
-				if direction == "left":
-					# index starts at one to avoid the back button
-					firstObj = loadMenuObjects[1][1]
-					if firstObj.rect.x < loadMenuButtonCollisionRect.x:
-						scrollLeft = True
-							
-					if scrollLeft:
-						button.rect.x += scrollAmount
+			if direction == "left" or direction == "right":
+				if button.action != "BACK":
+					if direction == "left":
+						if firstObj.rect.x < loadMenuButtonCollisionRect.x:
+							scrollLeft = True
+								
+						if scrollLeft:
+							button.rect.x += scrollAmount
 
-				if direction == "right":
-					lastObj = loadMenuObjects[1][-1]
-					if lastObj.rect.x - scrollAmount <= loadMenuButtonCollisionRect.x:
-						scrollRight = False
-						
-					if scrollRight:
-						button.rect.x -= scrollAmount
+					if direction == "right":
+						if lastObj.rect.x - scrollAmount <= loadMenuButtonCollisionRect.x:
+							scrollRight = False
+							
+						if scrollRight:
+							button.rect.x -= scrollAmount
+			elif direction in allSliders:
+				slider = direction
+				value = int(slider.value)
+				if slider.active:
+					if value < slider.bounds[1] / numOfLoadColumns:
+						if firstObj.rect.x < loadMenuButtonCollisionRect.x:
+							scrollLeft = True
+
+						if scrollLeft:
+							button.rect.x += scrollAmount
+
+					if value >= slider.bounds[1] / numOfLoadColumns:
+						if lastObj.rect.x - scrollAmount <= loadMenuButtonCollisionRect.x:
+							scrollRight = False
+
+						if scrollRight:
+							button.rect.x -= scrollAmount
+
+
+def UpdateLoadMenuButtonText(button):
+	with open(loadMenuTimeFilePath, "r") as loadMenuTimeFile:
+		loadMenuTime = json.load(loadMenuTimeFile)
+		if button.text in loadMenuTime:
+			if loadMenuTime[button.text] != "":
+				button.UpdateText("{} at {}".format(button.text, loadMenuTime[button.text]))
+
+
+def UpdateLoadMenuTime():
+	with open(loadMenuTimeFilePath, "r") as loadMenuTimeFile:
+		previousTimeData = json.load(loadMenuTimeFile)
+		loadMenuTimeFile.close()
+
+	with open(loadMenuTimeFilePath, "w") as loadMenuTimeFile:
+		time = dt.datetime.utcnow().strftime("%Y/%m/%d %H:%M:%S")
+		previousTimeData["Load {}".format(saveNum)] = time
+		timeData = previousTimeData
+		json.dump(timeData, fp=loadMenuTimeFile, indent=2)
 
 
 def DrawLoop():
@@ -1277,6 +1348,11 @@ def SaveMenuClick(button):
 			if button.action == "SAVE {0}".format(i):
 				saveNum = i
 				pressed = True
+				CreateButtons()
+				CreateResources()
+				AddStartingRooms()
+				GetBuildPageRowHeights()
+				GetBuildScrollColumnWidths()
 
 	saveRoomPath = "saves/Save {0}/roomData.json".format(saveNum)
 	saveGamePath = "saves/Save {0}/gameData.json".format(saveNum)
@@ -1296,6 +1372,11 @@ def LoadMenuClick(button):
 			if button.action == "LOAD {0}".format(i):
 				saveNum = i
 				pressed = True
+				CreateButtons()
+				CreateResources()
+				AddStartingRooms()
+				GetBuildPageRowHeights()
+				GetBuildScrollColumnWidths()
 
 	loadRoomPath = "saves/Save {0}/roomData.json".format(saveNum)
 	loadGamePath = "saves/Save {0}/gameData.json".format(saveNum)
@@ -1811,7 +1892,6 @@ def ScrollBuildMenu(direction):
 	else:
 		slider = direction		
 		value = int(slider.value)
-		direction = slider.direction
 
 		if buildScrollMin <= value <= buildScrollMax:
 			buildScrollNum = value
@@ -1851,6 +1931,21 @@ def CheckSaveDirectory():
 			json.dump(gameData, fp=saveGameFile, indent=2)
 
 		os.chdir(rootDirectory)
+
+	CheckLoadTime()
+
+
+def CheckLoadTime():
+	with open(loadMenuTimeFilePath, "r") as loadMenuTimeFile:
+		loadMenuTime = json.load(loadMenuTimeFile)
+		for i in range(1, numOFSaveFiles+1):
+			if "Load {}".format(i) not in loadMenuTime:
+				loadMenuTime["Load {}".format(i)] = ""
+
+		loadMenuTimeFile.close()
+
+	with open(loadMenuTimeFilePath, "w") as loadMenuTimeFile:
+		json.dump(loadMenuTime, fp=loadMenuTimeFile, indent=2)
 
 
 def SetDeafaultSaveValues():
@@ -1893,6 +1988,7 @@ def Save(roomPath=saveRoomPath, gameDataPath=saveGamePath):
 	CheckSaveDirectory()
 	SaveRoom(roomPath)
 	SaveGameData(gameDataPath)
+	UpdateLoadMenuTime()
 
 
 def Load(roomPath=loadRoomPath, gameDataPath=loadGamePath):
@@ -1916,15 +2012,11 @@ def SaveRoom(path=saveRoomPath):
 		x, y, w, h = room.rect
 		roomData["roomRects"].append([x // SF, y // SF])
 		roomData["roomNames"].append(room.roomName)
-		for page in buildingPages:
+		for i, page in enumerate(buildingPages):
 			if room in page:
 				index = buildingPages.index(page)
 				break
-			else:
-				index = None
-				break
-		if index != None:
-			roomData["roomIndexs"].append(index)
+		roomData["roomIndexs"].append(index)
 		roomData["roomLevels"].append(room.level)
 
 	with open(path, "w") as saveFile:
@@ -2036,11 +2128,23 @@ def HandleKeyboard(event):
 			if event.key == pg.K_RIGHT:
 				ScrollSaveMenu("right")
 
+		if event.type == pg.MOUSEBUTTONDOWN:
+			if event.button == 4:
+				ScrollSaveMenu("left")
+			if event.button == 5:
+				ScrollSaveMenu("right")
+
 	elif gameState == "LOAD MENU":
 		if event.type == pg.KEYDOWN:
 			if event.key == pg.K_LEFT:
 				ScrollLoadMenu("left")
 			if event.key == pg.K_RIGHT:
+				ScrollLoadMenu("right")
+
+		if event.type == pg.MOUSEBUTTONDOWN:
+			if event.button == 4:
+				ScrollLoadMenu("left")
+			if event.button == 5:
 				ScrollLoadMenu("right")
 
 	elif gameState != "START MENU" and gameState != "SAVE MENU" and gameState != "LOAD MENU":
@@ -2079,11 +2183,6 @@ def HandleKeyboard(event):
 def StartGame():
 	global running, gameState
 	running = True
-	CreateButtons()
-	CreateResources()
-	AddStartingRooms()
-	GetBuildPageRowHeights()
-	GetBuildScrollColumnWidths()
 	pageBuildNumber.UpdateText(str(buildPage))
 	gameState = "NONE"
 	DrawLoop()
@@ -2137,6 +2236,9 @@ def StartMenu():
 
 			for button in allButtons:
 				button.HandleEvent(event)
+
+			for slider in allSliders:
+				slider.HandleEvent(event)
 		
 		if gameState == "START MENU":
 			for obj in startMenuObjects:
@@ -2160,6 +2262,15 @@ def StartMenu():
 			button.active = False
 			if pressed:
 				running = False
+
+		for slider in allSliders:
+			if gameState == "SAVE MENU":
+				if slider in saveMenuObjects[1]:
+					ScrollSaveMenu(slider)
+			if gameState == "LOAD MENU":
+				if slider in loadMenuObjects[1]:
+					ScrollLoadMenu(slider)
+		
 
 		DrawStartMenu()
 
