@@ -1,0 +1,70 @@
+{
+	"names": ["Amanda", "Dave", "Flynn", "Georgia", "Gordon", "Hawke", "Jet", "Kylie", "Markus"],
+	"SPECIAL": {
+		"strength": {
+			"min": 1,
+			"max": 4
+		},
+		"perception": {
+			"min": 1,
+			"max": 4
+		},
+		"endurance": {
+			"min": 1,
+			"max": 4
+		},
+		"intelligence": {
+			"min": 1,
+			"max": 4
+		},
+		"charisma": {
+			"min": 1,
+			"max": 4
+		},
+		"agility": {
+			"min": 1,
+			"max": 4
+		},
+		"luck": {
+			"min": 1,
+			"max": 4
+		}
+	},
+	"stats": {
+		"health": 100,
+		"defense": {
+			"min": 0,
+			"max": 3
+		},
+		"attack": {
+			"min": 0,
+			"max": 3
+		},
+		"happiness": {
+			"min": 60,
+			"max": 90
+		}
+	},
+	"levelData": {
+		"level": 1,
+		"xp": 0,
+		"levelThresholdData": {
+			"levelThreshold": 100,
+			"levelThresholdMultipler": 2.2
+		},
+		"special": 1,
+		"defense": 2,
+		"attack": 2
+	},
+	"inventory": {
+		"main hand":  null,
+		"armour":  null,
+		"sepcial items":  null
+	},
+	"assignedRoom": null,
+	"genetics": {
+		"parents": [],
+		"age": 2,
+		"gender": -1
+	}
+}

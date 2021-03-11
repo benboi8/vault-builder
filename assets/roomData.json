@@ -3,6 +3,7 @@
 		"name": "Water purification",
 		"resource": {
 			"type": "water",
+			"specialStatType": "perception",
 			"amount": 4,
 			"time": 30
 		},
@@ -29,6 +30,7 @@
 		"name": "Diner",
 		"resource": {
 			"type": "food",
+			"specialStatType": "agility",
 			"amount": 4,
 			"time": 30
 		},
@@ -55,6 +57,7 @@
 		"name": "Power generator",
 		"resource": {
 			"type": "power",
+			"specialStatType": "strength",
 			"amount": 4,
 			"time": 30
 		},
@@ -81,6 +84,7 @@
 		"name": "Labatory",
 		"resource": {
 			"type": "experiments",
+			"specialStatType": "intelligence",
 			"amount": 0,
 			"time": 0
 		},
@@ -107,6 +111,7 @@
 		"name": "Lounge",
 		"resource": {
 			"type": "dwellers",
+			"specialStatType": "charisma",
 			"amount": 0,
 			"time": 60
 		},
@@ -133,6 +138,7 @@
 		"name": "Control room",
 		"resource": {
 			"type": "wasteland",
+			"specialStatType": "none",
 			"amount": 0,
 			"time": 60
 		},
@@ -159,6 +165,7 @@
 		"name": "Lift",
 		"resource": {
 			"type": "none",
+			"specialStatType": "none",
 			"amount": 0,
 			"time": 0
 		},
@@ -185,6 +192,7 @@
 		"name": "Vault Door",
 		"resource": {
 			"type": "security",
+			"specialStatType": "endurance",
 			"amount": 0,
 			"time": 0
 		},
@@ -211,6 +219,7 @@
 		"name": "Radio",
 		"resource": {
 			"type": "happiness",
+			"specialStatType": "charisma",
 			"amount": 0,
 			"time": 360
 		},
@@ -237,6 +246,7 @@
 		"name": "Training Room",
 		"resource": {
 			"type": "stat",
+			"specialStatType": "none",
 			"amount": 0,
 			"time": 0
 		},
@@ -263,6 +273,7 @@
 		"name": "Security",
 		"resource": {
 			"type": "security",
+			"specialStatType": "endurance",
 			"amount": 0,
 			"time": 120
 		},
@@ -289,6 +300,7 @@
 		"name": "Shop",
 		"resource": {
 			"type": "Caps",
+			"specialStatType": "charisma",
 			"amount": 10,
 			"time": 40
 		},

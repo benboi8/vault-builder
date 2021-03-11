@@ -1,12 +1,14 @@
 import pygame as pg
 from pygame import gfxdraw
 import datetime as dt
+from datetime import timedelta 
 import cv2
 import json
 from PIL import Image
 import os
 from os import listdir
 from os.path import isfile, join
+import random
 
 # initialise pygame
 pg.init()
@@ -31,15 +33,19 @@ resourceImagePath = "assets/resources"
 scaledResourceImagePath = "temp/assets/resources"
 resourceDataFilePath = "assets/resourceData.json"
 
+dwellerDataFilePath = "assets/dwellerData.json"
+
 loadMenuTimeFilePath = "saves/lastTime.json"
 
 saveNum = 1
 numOFSaveFiles = 6
 savePath = "saves/"
-saveRoomPath = "saves/Save {0}/roomData.json".format(saveNum)
-loadRoomPath = "saves/Save {0}/roomData.json".format(saveNum)
-saveGamePath = "saves/Save {0}/gameData.json".format(saveNum)
-loadGamePath = "saves/Save {0}/gameData.json".format(saveNum)
+saveRoomPath = "saves/Save {}/roomData.json".format(saveNum)
+loadRoomPath = "saves/Save {}/roomData.json".format(saveNum)
+saveGamePath = "saves/Save {}/gameData.json".format(saveNum)
+loadGamePath = "saves/Save {}/gameData.json".format(saveNum)
+saveDwellerPath = "saves/Save {}/dwellerData.json".format(saveNum)
+loadDwellerPath = "saves/Save {}/dwellerData.json".format(saveNum)
 
 buttonPath = "assets/buttons/"
 tempButtonPath = "temp/assets/buttons/"
@@ -146,6 +152,7 @@ quitConfirmLabels = []
 startMenuObjects = []
 saveMenuObjects = []
 loadMenuObjects = []
+dwellerMenuObjects = []
 
 # demolish
 demolishList = []
@@ -156,11 +163,24 @@ scrollCollideingRect = pg.Rect(50 * SF, 310 * SF, 500 * SF, 30 * SF)
 # determines what can be done in game e.g. building rooms
 gameState = "START MENU"
 # primary button actions e.g. build button
-allActions = ["BUILD", "SETTINGS", "CONFIRM QUIT", "START MENU", "SAVE MENU", "LOAD MENU"]
+allActions = ["BUILD", "SETTINGS", "CONFIRM QUIT", "START MENU", "SAVE MENU", "LOAD MENU", "DWELLERS"]
 buttonWidth, buttonHeight = 30, 30
 
+# build area cost
 increaseBuildAreaCost = 1000
 increaseBuildAreaMultiplier = 1.4
+
+# dwellers
+maxDwellers = 20
+startNumOfDwellers = 10
+dwellerPageMin = 1
+dwellerPageMax = maxDwellers
+assignDwellerMode = (False, None)
+unAssignableRooms = ["Lift", "Control room"]
+
+# dwellerPageMin = min(1, dwellerPageMin)
+# dwellerPageMax = max(dwellerPageMin + 5, dwellerPageMax)
+dwellerPage = dwellerPageMin
 
 # used for secondary buttons
 pressed = False
@@ -631,6 +651,7 @@ class Room:
 		self.textColor = roomData["drawData"]["textColor"]
 		self.name = roomData["name"] # display name
 		self.resourceType = roomData["resource"]["type"]
+		self.specialStatType = roomData["resource"]["specialStatType"]
 		self.resourceAmount = roomData["resource"]["amount"]
 		self.workTime = roomData["resource"]["time"]
 		self.level = roomData["levelData"]["level"]
@@ -769,7 +790,11 @@ class Room:
 	def AddResource(self):
 		if self.resource != None:
 			if self.resource.value + self.resourceAmount <= self.resource.maxAmount:
-				self.resource.value += round((self.resourceAmount * self.level) * (1.08 * self.numOfJoinedRooms))
+				specialMultiplier = 1
+				for dweller in self.dwellersWorking:
+					specialMultiplier += round(dweller.specialStats[self.specialStatType] / 5)
+					print(specialMultiplier)
+				self.resource.value += round(((self.resourceAmount * self.level) * (1.04 * self.numOfJoinedRooms)) * specialMultiplier)
 			else:
 				self.resource.value = self.resource.maxAmount
 			self.resource.UpdateRect()
@@ -896,47 +921,252 @@ class Resource:
 
 	def MinusResource(self):
 		if self.value - max(self.usage, self.usage * len(allDwellers)) >= self.minAmount:
-			self.value -= max(self.usage, self.usage * len(allDwellers))
+			self.value -= max(self.usage, self.usage * min(1, (len(allDwellers)) // 10))
 		else:
 			self.value = self.minAmount
 
 
 class Dweller:
-	def __init__(self, dwellerDataFilePath, parents=[]):
-		with open(dwellerDataFilePath, "r") as dwellerDataFile:
+	def __init__(self, surface, rect, color, textData, filePath=dwellerDataFilePath):
+		self.surface = surface
+		self.originalRect = rect
+
+		self.color = color
+		self.textData = textData
+		self.text = textData[0]
+		self.textColor = textData[1]
+		self.textSize = textData[2]
+
+		with open(filePath, "r") as dwellerDataFile:
 			dwellerData = json.load(dwellerDataFile)
 
-		self.name = dwellerData["names"][random.randint(0, dwellerData["numOfNames"])]
-		self.speicalStats = {
-			"Strength": random.randint(dwellerData["SPECIAL"]["Strength"]["min"], dwellerData["SPECIAL"]["Strength"]["max"]),
-			"Perception": random.randint(dwellerData["SPECIAL"]["Perception"]["min"], dwellerData["SPECIAL"]["Perception"]["max"]),
-			"Endurance": random.randint(dwellerData["SPECIAL"]["Endurance"]["min"], dwellerData["SPECIAL"]["Endurance"]["max"]),
-			"Intelligence": random.randint(dwellerData["SPECIAL"]["Intelligence"]["min"], dwellerData["SPECIAL"]["Intelligence"]["max"]),
-			"Charisma": random.randint(dwellerData["SPECIAL"]["Charisma"]["min"], dwellerData["SPECIAL"]["Charisma"]["max"]),
-			"Agility": random.randint(dwellerData["SPECIAL"]["Agility"]["min"], dwellerData["SPECIAL"]["Agility"]["max"]),
-			"Luck": random.randint(dwellerData["SPECIAL"]["Luck"]["min"], dwellerData["SPECIAL"]["Luck"]["max"])
+		self.name = dwellerData["names"][random.randint(0, len(dwellerData["names"]) - 1)]
+		self.specialStats = {
+			"strength": random.randint(dwellerData["SPECIAL"]["strength"]["min"], dwellerData["SPECIAL"]["strength"]["max"]),
+			"perception": random.randint(dwellerData["SPECIAL"]["perception"]["min"], dwellerData["SPECIAL"]["perception"]["max"]),
+			"endurance": random.randint(dwellerData["SPECIAL"]["endurance"]["min"], dwellerData["SPECIAL"]["endurance"]["max"]),
+			"intelligence": random.randint(dwellerData["SPECIAL"]["intelligence"]["min"], dwellerData["SPECIAL"]["intelligence"]["max"]),
+			"charisma": random.randint(dwellerData["SPECIAL"]["charisma"]["min"], dwellerData["SPECIAL"]["charisma"]["max"]),
+			"agility": random.randint(dwellerData["SPECIAL"]["agility"]["min"], dwellerData["SPECIAL"]["agility"]["max"]),
+			"luck": random.randint(dwellerData["SPECIAL"]["luck"]["min"], dwellerData["SPECIAL"]["luck"]["max"])
 		}
 
 		self.stats = {
-			"health": random.randint(dwellerData["stats"]["health"]["min"], dwellerData["stats"]["health"]["max"])
-			"defense": random.randint(dwellerData["stats"]["defense"]["min"], dwellerData["stats"]["defense"]["max"])
-			"attack": random.randint(dwellerData["stats"]["attack"]["min"], dwellerData["stats"]["attack"]["max"])
+			"health": dwellerData["stats"]["health"],
+			"defense": random.randint(dwellerData["stats"]["defense"]["min"], dwellerData["stats"]["defense"]["max"]),
+			"attack": random.randint(dwellerData["stats"]["attack"]["min"], dwellerData["stats"]["attack"]["max"]),
 			"happiness": random.randint(dwellerData["stats"]["happiness"]["min"], dwellerData["stats"]["happiness"]["max"])			
 		}
 
-		self.xp = dwellerData["xp"]
-		self.level = dwellerData["level"]
-		
+		self.xp = dwellerData["levelData"]["xp"]
+		self.level = dwellerData["levelData"]["level"]
+		self.levelThreshold = dwellerData["levelData"]["levelThresholdData"]["levelThreshold"]
+		self.levelThresholdMultipler = dwellerData["levelData"]["levelThresholdData"]["levelThresholdMultipler"]
+
 		self.inventory = {
-		"main hand": dwellerData["inventory"]["main hand"],
-		"armour": dwellerData["inventory"]["armour"],
-		"sepcial items": dwellerData["inventory"]["sepcial items"]
+			"main hand": dwellerData["inventory"]["main hand"],
+			"armour": dwellerData["inventory"]["armour"],
+			"sepcial items": dwellerData["inventory"]["sepcial items"]
 		}
 
-		self.assignedRoom = "none"
+		self.assignedRoom = dwellerData["assignedRoom"]
 
-		self.parents = parents
+		self.parents = dwellerData["genetics"]["parents"]
+		# 0 - child, 1 - teen, 2 - adult
+		self.age = dwellerData["genetics"]["age"]
+		# check if there is not already a gender for loading dwellers
+		if dwellerData["genetics"]["gender"] == -1: self.gender = random.randint(0, 1)
+		else: self.gender = dwellerData["genetics"]["gender"]
 
+		self.canBreed = True
+		self.breeding = False
+
+		self.dwellerData = dwellerData
+
+		self.Rescale()
+
+		allDwellers.append(self)
+
+	def Rescale(self):
+		self.rect = pg.Rect(self.originalRect[0] * SF, self.originalRect[1] * SF, self.originalRect[2] * SF, self.originalRect[3] * SF)
+		self.font = pg.font.SysFont("arial", self.textSize * SF)
+		self.UpdateText()
+
+	def UpdateText(self):
+		textName = self.font.render("Name: {}".format(str(self.name)), True, self.textColor)
+		textStrength = self.font.render("S: {}".format(str(self.specialStats["strength"])), True, self.textColor)
+		textPerception = self.font.render("P: {}".format(str(self.specialStats["perception"])), True, self.textColor)
+		textEndurance = self.font.render("E: {}".format(str(self.specialStats["endurance"])), True, self.textColor)
+		textIntelligence = self.font.render("I: {}".format(str(self.specialStats["intelligence"])), True, self.textColor)
+		textCharisma = self.font.render("C: {}".format(str(self.specialStats["charisma"])), True, self.textColor)
+		textAgility = self.font.render("A: {}".format(str(self.specialStats["agility"])), True, self.textColor)
+		textLuck = self.font.render("L: {}".format(str(self.specialStats["luck"])), True, self.textColor)
+		textHealth = self.font.render("Health: {}".format(str(self.stats["health"])), True, self.textColor)
+		textLevel = self.font.render("Level: {}".format(str(self.level)), True, self.textColor)
+		textXp = self.font.render("Xp: {}".format(str(self.xp)), True, self.textColor)
+		if self.assignedRoom != None:
+			textRoom = self.font.render("Room: {}".format(str(self.assignedRoom.name)), True, self.textColor)
+		else:
+			textRoom = self.font.render("Room: {}".format("None"), True, self.textColor)
+		textGender = self.font.render("G: {}".format(str(self.gender)), True, self.textColor)
+		self.allTexts = [(textName, self.rect.x + (2 * SF)), (textStrength, self.rect.x + (170 * SF)), (textPerception, self.rect.x + (190 * SF)), (textEndurance, self.rect.x + (210 * SF)), (textIntelligence, self.rect.x + (230 * SF)), (textCharisma, self.rect.x + (250 * SF)), (textAgility, self.rect.x + (270 * SF)), (textLuck, self.rect.x + (290 * SF)), (textHealth, self.rect.x + (310 * SF)), (textLevel, self.rect.x + (360 * SF)), (textXp, self.rect.x + (400 * SF)), (textRoom, (self.rect.x + (430 * SF))), (textGender, (self.rect.x + (500 * SF)))]
+
+	def Draw(self):
+		DrawRectOutline(self.surface, self.color, self.rect)
+		for textData in self.allTexts:
+			self.surface.blit(textData[0], (textData[1], (self.rect.y + textData[0].get_height() // 2) - 2 * SF))
+
+	def LevelUp(self):
+		self.level += 1
+		for statName in self.specialStats:
+			self.IncreaseStats(statName, self.dwellerData["levelData"]["special"])
+
+		for statName in self.stats:
+			if statName == "health":
+				self.stats[statName] = 100
+			if statName == "defense":
+				self.IncreaseStats(statName, self.dwellerData["levelData"]["defense"])
+			if statName == "attack":
+				self.IncreaseStats(statName, self.dwellerData["levelData"]["attack"])
+			if statName == "happiness":
+				self.stats[statName] = 100
+
+	def AddXp(self, amount):
+		self.xp += amount
+		if self.xp >= self.levelThreshold:
+			self.levelThreshold = round(self.levelThreshold * self.levelThresholdMultipler)
+			self.LevelUp()
+			self.AddXp(0)
+
+	def IncreaseStats(self, name, amount):
+		if name in self.speicalStats:
+			self.specialStats[name] += amount
+		elif name in self.stats:
+			self.stats[name] += amount
+
+	def ChangeStats(self, dwellerData):
+		self.name = dwellerData["name"]
+		self.specialStats = {
+			"strength": dwellerData["specialStats"]["strength"],
+			"perception": dwellerData["specialStats"]["perception"],
+			"endurance": dwellerData["specialStats"]["endurance"],
+			"intelligence": dwellerData["specialStats"]["intelligence"],
+			"charisma": dwellerData["specialStats"]["charisma"],
+			"agility": dwellerData["specialStats"]["agility"],
+			"luck": dwellerData["specialStats"]["luck"]
+		}
+
+		self.stats = {
+			"health": dwellerData["stats"]["health"],
+			"defense":dwellerData["stats"]["defense"],
+			"attack": dwellerData["stats"]["attack"],
+			"happiness": dwellerData["stats"]["happiness"]			
+		}
+
+		self.xp = dwellerData["levelData"]["xp"]
+		self.level = dwellerData["levelData"]["level"]
+		self.levelThreshold = dwellerData["levelData"]["levelThresholdData"]["levelThreshold"]
+		self.levelThresholdMultipler = dwellerData["levelData"]["levelThresholdData"]["levelThresholdMultipler"]
+
+		self.inventory = {
+			"main hand": dwellerData["inventory"]["main hand"],
+			"armour": dwellerData["inventory"]["armour"],
+			"sepcial items": dwellerData["inventory"]["sepcial items"]
+		}
+
+		self.assignedRoom = dwellerData["assignedRoom"]
+
+		self.parents = dwellerData["genetics"]["parents"]
+		# 0 - child, 1 - teen, 2 - adult
+		self.age = dwellerData["genetics"]["age"]
+		# check if there is not already a gender for loading dwellers
+		self.gender = dwellerData["genetics"]["gender"]
+
+	def CheckBreed(self):
+		# room check
+		if self.assignedRoom.name == "Lounge":
+			# check all dwellers in the room
+			for partner in self.assignedRoom.dwellersWorking:
+				# check if dweller isnt check its self
+				if self != partner:
+					print(self.name, partner.name)
+					# check if dwellers can breed
+					if self.canBreed and partner.canBreed:
+						# check if dwellers are both adults
+						if self.age == 2 and partner.age == 2:
+							# check if dwellers are opposite genders
+							if self.gender != partner.gender:
+								# check if dweller limit will be reached
+								if len(allDwellers) + 1 <= maxDwellers:
+									# check if they have parents
+									if len(self.parents) > 0:
+										# check if they are related
+										for parent in self.parents:
+											if parent not in partner.parents:
+												self.StartBreed(partner)
+												return
+									else:
+										self.StartBreed(partner)
+										return
+
+	def StartBreed(self, partner):
+		print("start")
+		self.partner = partner
+		self.breeding = True
+		self.canBreed = False
+		partner.canBreed = False
+		self.startBreedTime = dt.datetime.utcnow().strftime("%S")
+		self.endBreedtime = timedelta(seconds=int(self.startBreedTime) + 20)
+		
+	def BreedCounter(self):
+		self.currentTime = int(dt.datetime.utcnow().strftime("%S"))
+		if self.currentTime == int(self.endBreedtime.seconds):
+			self.FinishBreed(self.partner)
+
+	def FinishBreed(self, partner):
+		print("Finished")
+		self.breeding = False
+		self.canBreed = True
+		partner.canBreed = True
+		dweller = Dweller(self.surface, (self.rect.x // SF, (self.rect.y // SF) + (len(allDwellers) * 18), self.rect.w // SF, self.rect.h // SF), self.color, self.textData)
+		dwellerData = {
+			"name": self.dwellerData["names"][random.randint(0, len(self.dwellerData["names"]) - 1)],
+			"specialStats": {
+				"strength": min(max(1, round((self.specialStats["strength"] + partner.specialStats["strength"]) / 2) + random.randint(-1, 1)), 10),
+				"perception": min(max(1, round((self.specialStats["perception"] + partner.specialStats["perception"]) / 2) + random.randint(-1, 1)), 10),
+				"endurance": min(max(1, round((self.specialStats["endurance"] + partner.specialStats["endurance"]) / 2) + random.randint(-1, 1)), 10),
+				"intelligence": min(max(1, round((self.specialStats["intelligence"] + partner.specialStats["intelligence"]) / 2) + random.randint(-1, 1)), 10),
+				"charisma": min(max(1, round((self.specialStats["charisma"] + partner.specialStats["charisma"]) / 2) + random.randint(-1, 1)), 10),
+				"agility": min(max(1, round((self.specialStats["agility"] + partner.specialStats["agility"]) / 2) + random.randint(-1, 1)), 10),
+				"luck": min(max(1, round((self.specialStats["luck"] + partner.specialStats["luck"]) / 2) + random.randint(-1, 1)), 10)
+			},
+			"stats": {
+				"health": 100,
+				"defense": min(max(1, round((self.stats["defense"] + partner.stats["defense"]) / 2) + random.randint(-1, 1)), 10),
+				"attack": min(max(1, round((self.stats["attack"] + partner.stats["attack"]) / 2) + random.randint(-1, 1)), 10),
+				"happiness": random.randint(80, 100)
+			},
+			"levelData": {
+				"xp": 0,
+				"level": 1,
+				"levelThresholdData": {
+					"levelThreshold": 100,
+					"levelThresholdMultipler": self.dwellerData["levelData"]["levelThresholdData"]["levelThresholdMultipler"]
+				}
+			},
+			"inventory": {
+				"main hand": None,
+				"armour": None,
+				"sepcial items": None
+			},
+			"assignedRoom": None,
+			"genetics": {
+				"parents": [self, partner],
+				"age": 0,
+				"gender": random.randint(0, 1)
+			}
+		}
+		dweller.ChangeStats(dwellerData)
 
 
 def CreateResources():
@@ -946,18 +1176,32 @@ def CreateResources():
 		x += 60
 
 
+def CreateDwellers():
+	x, y, w, h = boundingRect
+	x /= SF
+	y /= SF
+	w -= 3
+	w /= SF
+	h = 15
+	for i in range(0, startNumOfDwellers):
+		dweller = Dweller(mainWindow, (x, y, w, h), colLightGreen, ("", colLightGreen, 8))
+		assignDwellerButton = HoldButton(mainWindow, (x, y, w, h), ("DWELLERS", "ASSIGN"), (colWhite, colLightGray), ("", colDarkGray), lists=[dwellerMenuObjects, allButtons], actionData=[dweller])
+		y += h + 3
+
+
 def CreateButtons():
-	global pageUpBuildButton, pageBuildNumber, pageDownBuildButton
 	CreateBuildingButtons()
 	CreateSettingsButtons()
-	pageUpBuildButton = HoldButton(mainWindow, (605, (360 // 2) - 55, buttonWidth, buttonHeight), ("GAME", "BUILD PAGE UP"), (colWhite, colLightGray), ("Up", colDarkGray), imageData=[buttonPath + "GAME/UP.png", tempButtonPath + "GAME/UP.png"])
-	pageBuildNumber = Label(mainWindow, (605, 360 // 2 - 15, buttonWidth, buttonHeight), "GAME", (colLightGray, colDarkGray), (buildPage, colLightGray, 24, "center-center"))
-	pageDownBuildButton = HoldButton(mainWindow, (605 , (360 // 2) + 25, buttonWidth, buttonHeight), ("GAME", "BUILD PAGE DOWN"), (colWhite, colLightGray), ("Down", colDarkGray), imageData=[buttonPath + "GAME/DOWN.png", tempButtonPath + "GAME/DOWN.png"])
+	CreateDwellerButtons()
 
 
 def CreateBuildingButtons():
-	global cancelBuildButton, demolishBuildButton, buildButton, buildScrollSlider
+	global cancelBuildButton, demolishBuildButton, buildButton, buildScrollSlider, pageBuildNumber
 	# building button
+	pageUpBuildButton = HoldButton(mainWindow, (605, (360 // 2) - 55, buttonWidth, buttonHeight), ("GAME", "BUILD PAGE UP"), (colWhite, colLightGray), ("Up", colDarkGray), imageData=[buttonPath + "GAME/UP.png", tempButtonPath + "GAME/UP.png"])
+	pageBuildNumber = Label(mainWindow, (602.5, 162.5, buttonWidth + 5, buttonHeight + 5), "GAME", (colLightGray, colDarkGray), (buildPage, colLightGray, 24, "center-center"))
+	pageDownBuildButton = HoldButton(mainWindow, (605 , (360 // 2) + 25, buttonWidth, buttonHeight), ("GAME", "BUILD PAGE DOWN"), (colWhite, colLightGray), ("Down", colDarkGray), imageData=[buttonPath + "GAME/DOWN.png", tempButtonPath + "GAME/DOWN.png"])
+
 	startX, startY = 10, 310
 	buildButton = ToggleButton(mainWindow, (startX, startY, buttonWidth, buttonHeight), ("GAME", "BUILD"), (colWhite, colLightGray), ("Build", colDarkGray), imageData=[buttonPath + "GAME/build.png", tempButtonPath + "GAME/bulid.png"])
 	x = startX
@@ -993,6 +1237,53 @@ def CreateSettingsButtons():
 		color = (colWhite, colLightGray)
 		settingsButton = HoldButton(mainWindow, (startX, y, buttonWidth, buttonHeight), ("SETTINGS", buttonAction), color, (name, colDarkGray), actionData, imageData=[buttonPath + "SETTINGS/" + buttonAction + ".png", tempButtonPath + "SETTINGS/" + buttonAction + ".png"])
 
+
+def CreateDwellerButtons():
+	showDwellers = ToggleButton(mainWindow, (605, 10, buttonWidth, buttonHeight), ("GAME", "DWELLERS"), (colWhite, colLightGray), ("Dwellers", colDarkGray), lists=[dwellerMenuObjects, allButtons])
+	pageUpDwellerButton = HoldButton(mainWindow, (605, (360 // 2) - 55, buttonWidth, buttonHeight), ("DWELLERS", "DWELLER PAGE UP"), (colWhite, colLightGray), ("Up", colDarkGray), imageData=[buttonPath + "GAME/UP.png", tempButtonPath + "GAME/UP.png"], lists=[dwellerMenuObjects, allButtons])
+	pageDwellerNumber = Label(mainWindow, (602.5, 162.5, buttonWidth + 5, buttonHeight + 5), "DWELLERS", (colLightGray, colDarkGray), (dwellerPage, colLightGray, 24, "center-center"), lists=[dwellerMenuObjects, allLabels])
+	pageDownDwellerButton = HoldButton(mainWindow, (605 , (360 // 2) + 25, buttonWidth, buttonHeight), ("DWELLERS", "DWELLER PAGE DOWN"), (colWhite, colLightGray), ("Down", colDarkGray), imageData=[buttonPath + "GAME/DOWN.png", tempButtonPath + "GAME/DOWN.png"], lists=[dwellerMenuObjects, allButtons])
+	
+	deAssignButton = HoldButton(mainWindow, (605, 320, buttonWidth, buttonHeight), ("DWELLERS", "DEASSIGN"), (colWhite, colLightGray), ("Un-assign", colDarkGray), lists=[dwellerMenuObjects, allButtons])
+	cancel = HoldButton(mainWindow, (605, 280, buttonWidth, buttonHeight), ("DWELLERS", "CANCEL"), (colWhite, colLightGray), ("Cancel", colDarkGray), lists=[dwellerMenuObjects, allButtons])
+
+
+def ScrollDwellerMenu(direction):
+	global dwellerPage
+	if direction == "down":
+		if dwellerPage + 1 <= dwellerPageMax:
+			dwellerPage += 1
+
+			for dweller in allDwellers: 
+				dweller.rect.y -= dweller.rect.h + (3 * SF)
+
+			for obj in dwellerMenuObjects:
+				if obj in allButtons:
+					if obj.action == "ASSIGN":
+						obj.rect.y -= dweller.rect.h + (3 * SF)
+		else:
+			dwellerPage = dwellerPageMax
+
+
+	if direction == "up":
+		if dwellerPage - 1 >= dwellerPageMin:
+			dwellerPage -= 1
+
+			for dweller in allDwellers: 
+				dweller.rect.y += dweller.rect.h + (3 * SF)
+
+			for obj in dwellerMenuObjects:
+				if obj in allButtons:
+					if obj.action == "ASSIGN":
+						obj.rect.y += dweller.rect.h + (3 * SF)
+		else:
+			dwellerPage = dwellerPageMin
+
+
+	for obj in dwellerMenuObjects:
+		if obj in allLabels:
+			obj.UpdateText(str(dwellerPage))
+	
 
 def CreateStartMenuObjects():
 	global startMenuObjects
@@ -1159,7 +1450,8 @@ def DrawLoop():
 		DrawRectOutline(mainWindow, colLightGray, (boundingRect.x - 1.5 * SF, boundingRect.y - 1.5 * SF, boundingRect.w + 2 * SF, boundingRect.h + 3 * SF), 1 * SF)
 
 	for label in allLabels:
-		label.Draw()
+		if label not in dwellerMenuObjects:
+			label.Draw()
 
 	for obj in roomInfoLabels:
 		obj.Draw()
@@ -1200,8 +1492,19 @@ def DrawLoop():
 		if len(tempRooms) > 0:
 			for placementOption in placementOptions:
 				DrawRectOutline(mainWindow, colOrange, placementOption, 4)
-		
-	DrawRooms()
+	
+	if gameState != "DWELLERS":
+		DrawRooms()
+	else:
+		DrawDwellers()
+
+	if assignDwellerMode[0]:
+		for obj in dwellerMenuObjects:
+			if obj in allButtons:
+				if obj.action == "DEASSIGN":
+					obj.Draw()
+				if obj.action == "CANCEL":
+					obj.Draw()
 
 	if gameState == "CONFIRM QUIT":
 		DrawConfirmQuit()
@@ -1218,6 +1521,22 @@ def DrawRooms():
 	for room in allRooms:
 		if boundingRect.colliderect(room.rect):
 			room.DrawJoined()
+
+
+def DrawDwellers():
+	for obj in dwellerMenuObjects:
+		if obj in allButtons:
+			if obj.action != "ASSIGN":
+				if obj.action != "DEASSIGN":
+					if obj.action != "CANCEL":
+						obj.Draw()
+		else:
+			obj.Draw()
+
+
+	for dweller in allDwellers:
+		if boundingRect.colliderect(dweller.rect):
+			dweller.Draw()
 
 
 def DrawStartMenu():
@@ -1322,57 +1641,89 @@ def HasRoomBeenClicked():
 
 
 def BuildClick(button):
-	if button.active:
-		if button.rect.colliderect(scrollCollideingRect):
-			if button.action == "ADD ROOM" and not demolishBuildButton.active:
-				pressed = True
-				AddRoom(button.actionData)
-		
-		if button.action == "CANCEL":
-			pressed = True
-			CancelBuild()
-		if button.action == "DEMOLISH":
-			pressed = True
-			CancelBuild()
-			DemolishBuild()
-		if button.action == "SCROLL RIGHT":
-			pressed = True
-			ScrollBuildMenu("right")
-		if button.action == "SCROLL LEFT":
-			pressed = True
-			ScrollBuildMenu("left")
-		if button.action == "INCREASE BUILD AREA":
-			pressed = True
-			IncreaseBuildArea(button)		
-		if button.action == "DECREASE BUILD AREA":
-			pressed = True
-			DecreaseBuildArea()
+	if button.rect.colliderect(scrollCollideingRect):
+		if button.action == "ADD ROOM" and not demolishBuildButton.active:
+			AddRoom(button.actionData)
+	
+	if button.action == "CANCEL":
+		CancelBuild()
+	if button.action == "DEMOLISH":
+		CancelBuild()
+		DemolishBuild()
+	if button.action == "SCROLL RIGHT":
+		ScrollBuildMenu("right")
+	if button.action == "SCROLL LEFT":
+		ScrollBuildMenu("left")
+	if button.action == "INCREASE BUILD AREA":
+		IncreaseBuildArea(button)		
+	if button.action == "DECREASE BUILD AREA":
+		DecreaseBuildArea()
 
 
 def SettingsClick(button):
 	global gameState
-	if button.active:
-		if button.action == "SAVE":
-			pressed = True
-			Save(roomPath=saveRoomPath, gameDataPath=saveGamePath)
-		if button.action == "LOAD":
-			pressed = True
-			Load(roomPath=loadRoomPath, gameDataPath=loadGamePath)
-		if button.action == "EXACT":
-			pressed = True
-			ShowExactQuantities()
-		if button.action == "SF 1":
-			pressed = True
-			ChangeResolution(1)
-		if button.action == "SF 2":
-			pressed = True
-			ChangeResolution(2)
-		if button.action == "SF 3":
-			pressed = True
-			ChangeResolution(3)
-		if button.action == "EXIT":
-			pressed = True
+	if button.action == "SAVE":
+		Save(roomPath=saveRoomPath, gameDataPath=saveGamePath)
+	if button.action == "LOAD":
+		Load(roomPath=loadRoomPath, gameDataPath=loadGamePath)
+	if button.action == "EXACT":
+		ShowExactQuantities()
+	if button.action == "SF 1":
+		ChangeResolution(1)
+	if button.action == "SF 2":
+		ChangeResolution(2)
+	if button.action == "SF 3":
+		ChangeResolution(3)
+	if button.action == "EXIT":
 			QuitMenu()
+
+
+def DwellerClick(button):
+	if button.action == "DWELLER PAGE UP":
+		ScrollDwellerMenu("up")
+
+	if button.action == "DWELLER PAGE DOWN":
+		ScrollDwellerMenu("down")
+
+	if button.rect.colliderect(boundingRect):
+		if button.action == "ASSIGN":
+			AssignDweller(button.actionData[0])
+
+
+def AssignDweller(dweller):
+	global assignDwellerMode, gameState
+	assignDwellerMode = (True, dweller)
+	gameState = "NONE"
+	for obj in dwellerMenuObjects:
+		if obj in allButtons:
+			if obj.action == "DWELLERS":
+				obj.active = False
+
+
+def DeAssignDweller(dweller):
+	global assignDwellerMode
+	room = dweller.assignedRoom
+	dweller.assignedRoom = None
+	room.dwellersWorking.remove(dweller)
+	dweller.UpdateText()
+	for obj in dwellerMenuObjects:
+		if obj in allButtons:
+			obj.active = False
+			if obj.action == "DWELLERS":
+				obj.active = True
+	gameState = "DWELLERS"
+	assignDwellerMode = (False, None)
+
+
+def CancelAssignDweller():
+	global gameState, assignDwellerMode
+	for obj in dwellerMenuObjects:
+		if obj in allButtons:
+			obj.active = False
+			if obj.action == "DWELLERS":
+				obj.active = True
+	gameState = "DWELLERS"
+	assignDwellerMode = (False, None)
 
 
 def SaveMenuClick(button):
@@ -1391,11 +1742,14 @@ def SaveMenuClick(button):
 				AddStartingRooms()
 				GetBuildPageRowHeights()
 				GetBuildScrollColumnWidths()
+				CreateDwellers()
 
 	saveRoomPath = "saves/Save {0}/roomData.json".format(saveNum)
 	saveGamePath = "saves/Save {0}/gameData.json".format(saveNum)
+	saveDwellerPath = "saves/Save {0}/dwellerData.json".format(saveNum)
 	loadRoomPath = "saves/Save {0}/roomData.json".format(saveNum)
 	loadGamePath = "saves/Save {0}/gameData.json".format(saveNum)
+	loadDwellerPath = "saves/Save {0}/dwellerData.json".format(saveNum)
 	return pressed
 
 
@@ -1415,11 +1769,14 @@ def LoadMenuClick(button):
 				AddStartingRooms()
 				GetBuildPageRowHeights()
 				GetBuildScrollColumnWidths()
+				CreateDwellers()
 
-	loadRoomPath = "saves/Save {0}/roomData.json".format(saveNum)
-	loadGamePath = "saves/Save {0}/gameData.json".format(saveNum)
 	saveRoomPath = "saves/Save {0}/roomData.json".format(saveNum)
 	saveGamePath = "saves/Save {0}/gameData.json".format(saveNum)
+	saveDwellerPath = "saves/Save {0}/dwellerData.json".format(saveNum)
+	loadRoomPath = "saves/Save {0}/roomData.json".format(saveNum)
+	loadGamePath = "saves/Save {0}/gameData.json".format(saveNum)
+	loadDwellerPath = "saves/Save {0}/dwellerData.json".format(saveNum)
 	if pressed:
 		Load(loadRoomPath, loadGamePath)
 
@@ -1498,6 +1855,18 @@ def SecondaryButtonPress(event):
 	global pressed, sliderMoving
 	if event.type == pg.MOUSEBUTTONDOWN:
 		if event.button == 1:
+			if assignDwellerMode[0]:
+				HasRoomBeenClicked()
+
+				for obj in dwellerMenuObjects:
+					if obj in allButtons:
+						obj.HandleEvent(event)
+						if obj.active:
+							if obj.action == "DEASSIGN":
+								DeAssignDweller(assignDwellerMode[1])
+							if obj.action == "CANCEL":
+								CancelAssignDweller()					
+
 			if not pressed:
 				if gameState == "NONE":
 					HasRoomBeenClicked()
@@ -1509,11 +1878,14 @@ def SecondaryButtonPress(event):
 						if button.action == "BUILD PAGE UP":
 							BuildPage("up")
 
-					if gameState == "BUILD" and button.type == "BUILD":
-						BuildClick(button)
+						if gameState == "BUILD" and button.type == "BUILD":
+							BuildClick(button)
 
-					if gameState == "SETTINGS":
-						SettingsClick(button)
+						if gameState == "SETTINGS" and button.type == "SETTINGS":
+							SettingsClick(button)
+
+						if gameState == "DWELLERS" and button.type == "DWELLERS":
+							DwellerClick(button)
 
 				SliderClicked()
 
@@ -1568,9 +1940,13 @@ def DecreaseBuildArea():
 
 
 def RoomClicked(room):
-	global roomInfoLabels
+	global roomInfoLabels, assignDwellerMode
 
 	if room != False:
+		if assignDwellerMode[0]:
+			AssignDwellerToRoom(assignDwellerMode[1], room)
+			return
+
 		if room.resourcesAvaiable:
 			room.CollectResources()
 		else:
@@ -1598,6 +1974,21 @@ def RoomClicked(room):
 		roomInfoLabels = []
 		for r in allRooms:
 			r.selected = False
+
+
+def AssignDwellerToRoom(dweller, room):
+	global assignDwellerMode
+	if room.name not in unAssignableRooms:
+		dweller.assignedRoom = room
+		room.dwellersWorking.append(dweller)
+		dweller.UpdateText()
+	for obj in dwellerMenuObjects:
+		if obj in allButtons:
+			obj.active = False
+			if obj.action == "DWELLERS":
+				obj.active = True
+	gameState = "DWELLERS"
+	assignDwellerMode = (False, None)
 
 
 def UpgradeRoom(button):
@@ -1694,7 +2085,11 @@ def CheckDemolish(room, direction=(None, None)):
 
 	if remove:
 		roomToDemolish = demolishList[0]
+		for dweller in roomToDemolish.dwellersWorking:
+			dweller.assignedRoom = None
+			dweller.UpdateText()
 		for room in allRooms:
+
 			if roomToDemolish in room.joinedRooms:
 				room.joinedRooms.remove(roomToDemolish)
 
@@ -1959,7 +2354,7 @@ def CheckSaveDirectory():
 			newDirectorys.append(newPath)
 
 	for path in newDirectorys:
-		roomData, gameData = SetDeafaultSaveValues() 
+		roomData, gameData, dwellerData = SetDeafaultSaveValues() 
 		os.chdir(path)
 
 		with open("roomData.json", "w") as saveGameFile:
@@ -1967,6 +2362,9 @@ def CheckSaveDirectory():
 
 		with open("gameData.json", "w") as saveGameFile:
 			json.dump(gameData, fp=saveGameFile, indent=2)
+
+		with open("dwellerData.json", "w") as saveGameFile:
+			json.dump(dwellerData, fp=saveGameFile, indent=2)
 
 		os.chdir(rootDirectory)
 
@@ -2019,20 +2417,25 @@ def SetDeafaultSaveValues():
 		"buildPage": buildPageMax
 		}
 
-	return roomData, gameData
+	with open(dwellerDataFilePath, "r") as dwellerDataFile:
+		dwellerData = json.load(dwellerDataFile)
+
+	return roomData, gameData, dwellerData
 
 
-def Save(roomPath=saveRoomPath, gameDataPath=saveGamePath):
+def Save(roomPath=saveRoomPath, gameDataPath=saveGamePath, dwellerPath=saveDwellerPath):
 	CheckSaveDirectory()
 	SaveRoom(roomPath)
 	SaveGameData(gameDataPath)
 	UpdateLoadMenuTime()
+	SaveDwellerData(dwellerPath)
 
 
-def Load(roomPath=loadRoomPath, gameDataPath=loadGamePath):
+def Load(roomPath=loadRoomPath, gameDataPath=loadGamePath, dwellerPath=loadDwellerPath):
 	CreateLoadMenuObjects()
 	LoadRoom(roomPath)
 	LoadGameData(gameDataPath)
+	LoadDwellerData(dwellerPath)
 
 
 def SaveRoom(path=saveRoomPath):
@@ -2091,6 +2494,82 @@ def SaveGameData(path=saveGamePath):
 		json.dump(gameData, fp=saveFile, indent=2)
 
 
+def SaveDwellerData(path=saveDwellerPath):
+	dwellerData = {
+		"names": [],
+		"specialStats": {
+			"strength": [],
+			"perception": [],
+			"endurance": [],
+			"intelligence": [],
+			"charisma": [],
+			"agility": [],
+			"luck": []
+		},
+		"stats": {
+			"health": [],
+			"defense": [],
+			"attack": [],
+			"happiness": []
+		},
+		"levelData": {
+			"xp": [],
+			"level": [],
+			"levelThresholdData": {
+				"levelThreshold": [],
+				"levelThresholdMultipler": []
+				},
+		},
+		"inventory": {
+			"main hand": [],
+			"armour": [],
+			"sepcial items": []
+		},
+		"assignedRoom": [],
+		"genetics": {
+			"parents": [],
+			"age": [],
+			"gender": []
+		}
+	}
+
+	for dweller in allDwellers:
+		name = dweller.name
+		specialStats = dweller.specialStats
+		stats = dweller.stats
+		xp = dweller.xp
+		level = dweller.level
+		levelThreshold = dweller.levelThreshold
+		levelThresholdMultipler = dweller.levelThresholdMultipler
+		inventory = dweller.inventory
+		if dweller.assignedRoom != None:
+			assignedRoom = allRooms.index(dweller.assignedRoom)
+		else:
+			assignedRoom = None
+		parents = dweller.parents
+		age = dweller.age
+		gender = dweller.gender
+		dwellerData["names"].append(name)
+		for special in specialStats:
+			dwellerData["specialStats"][special].append(specialStats[special])
+		for stat in stats:
+			dwellerData["stats"][stat].append(stats[stat])
+		dwellerData["levelData"]["xp"].append(xp)
+		dwellerData["levelData"]["level"].append(level)
+		dwellerData["levelData"]["levelThresholdData"]["levelThreshold"].append(levelThreshold)
+		dwellerData["levelData"]["levelThresholdData"]["levelThresholdMultipler"].append(levelThresholdMultipler)
+		for item in inventory:
+			dwellerData["inventory"][item].append(inventory[item])
+
+		dwellerData["assignedRoom"].append(assignedRoom)
+		dwellerData["genetics"]["parents"].append(parents)
+		dwellerData["genetics"]["age"].append(age)
+		dwellerData["genetics"]["gender"].append(gender)
+
+	with open(path, "w") as saveDwellerFile:
+		json.dump(dwellerData, fp=saveDwellerFile, indent=2)
+
+
 def LoadRoom(path=loadRoomPath):
 	global allRooms, buildingPages, buildPage
 	allRooms = []
@@ -2119,6 +2598,65 @@ def LoadGameData(path=loadGamePath):
 			resource.value = gameData["resources"][resource.name]["value"]
 			resource.activeRooms = gameData["resources"][resource.name]["activeRooms"]
 			resource.UpdateValue(0)
+
+
+def LoadDwellerData(path=loadDwellerPath):
+	global allDwellers
+	allDwellers = []
+	with open(path, "r") as dwellerDataFile:
+		dwellerData = json.load(dwellerDataFile)
+
+	x, y, w, h = boundingRect
+	x /= SF
+	y /= SF
+	w -= 3
+	w /= SF
+	h = 15
+	for i in range(len(dwellerData["names"])):
+		dweller = Dweller(mainWindow, (x, y, w, h), colLightGreen, ("", colLightGreen, 8))
+		data = {
+			"name": dwellerData["names"][i],
+			"specialStats": {
+				"strength": dwellerData["specialStats"]["strength"][i],
+				"perception": dwellerData["specialStats"]["perception"][i],
+				"endurance": dwellerData["specialStats"]["endurance"][i],
+				"intelligence": dwellerData["specialStats"]["intelligence"][i],
+				"charisma": dwellerData["specialStats"]["charisma"][i],
+				"agility": dwellerData["specialStats"]["agility"][i],
+				"luck": dwellerData["specialStats"]["luck"][i]
+			},
+			"stats": {
+				"health": dwellerData["stats"]["health"][i],
+				"defense": dwellerData["stats"]["defense"][i],
+				"attack": dwellerData["stats"]["attack"][i],
+				"happiness": dwellerData["stats"]["happiness"][i]
+			},
+			"levelData": {
+				"xp": dwellerData["levelData"]["xp"][i],
+				"level": dwellerData["levelData"]["level"][i],
+				"levelThresholdData": {
+					"levelThreshold": dwellerData["levelData"]["levelThresholdData"]["levelThreshold"][i],
+					"levelThresholdMultipler": dwellerData["levelData"]["levelThresholdData"]["levelThresholdMultipler"][i]
+				},
+			},
+			"inventory": {
+				"main hand": dwellerData["inventory"]["main hand"][i],
+				"armour": dwellerData["inventory"]["armour"][i],
+				"sepcial items": dwellerData["inventory"]["sepcial items"][i]
+			},
+			"assignedRoom": dwellerData["assignedRoom"][i],
+			"genetics": {
+				"parents": dwellerData["genetics"]["parents"][i],
+				"age": dwellerData["genetics"]["age"][i],
+				"gender": dwellerData["genetics"]["gender"][i]
+			}
+		}
+		if data["assignedRoom"] != None:
+			data["assignedRoom"] = allRooms[data["assignedRoom"]]
+		dweller.ChangeStats(data)
+		dweller.UpdateText()
+		assignDwellerButton = HoldButton(mainWindow, (x, y, w, h), ("DWELLERS", "ASSIGN"), (colWhite, colLightGray), ("", colDarkGray), lists=[dwellerMenuObjects, allButtons], actionData=[dweller])
+		y += h + 3
 
 
 def QuitMenu():
@@ -2193,9 +2731,15 @@ def HandleKeyboard(event):
 				QuitMenu()
 		if event.type == pg.KEYDOWN:
 			if event.key == pg.K_UP:
-				BuildPage("up")
+				if gameState == "DWELLERS":
+					ScrollDwellerMenu("up")
+				else:
+					BuildPage("up")
 			if event.key == pg.K_DOWN:
-				BuildPage("down")
+				if gameState == "DWELLERS":
+					ScrollDwellerMenu("down")
+				else:
+					BuildPage("down")
 
 			if event.key == pg.K_b:
 				if gameState != "BUILD":
@@ -2213,9 +2757,15 @@ def HandleKeyboard(event):
 
 		if event.type == pg.MOUSEBUTTONDOWN:
 			if event.button == 4:
-				BuildPage("up")
+				if gameState == "DWELLERS":
+					ScrollDwellerMenu("up")
+				else:
+					BuildPage("up")
 			if event.button == 5:
-				BuildPage("down")
+				if gameState == "DWELLERS":
+					ScrollDwellerMenu("down")
+				else:
+					BuildPage("down")
 
 
 def StartGame():
@@ -2235,10 +2785,16 @@ def StartGame():
 					MoveRoom(event)
 
 			for button in allButtons:
-				button.HandleEvent(event)
+				if button.type == "GAME":
+					button.HandleEvent(event)
+				elif button.type == gameState:
+					button.HandleEvent(event)
 
 			for slider in allSliders:
-				slider.HandleEvent(event)
+				if button.type == "GAME":
+					slider.HandleEvent(event)
+				elif button.type == gameState:
+					slider.HandleEvent(event)
 
 			PrimaryButtonPress(event)
 			SecondaryButtonPress(event)
