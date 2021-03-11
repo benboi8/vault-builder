@@ -1,0 +1,30 @@
+dweller:
+
+name
+
+dict of SPEICAL stats:
+Strength
+Perception
+Endurance
+Intelligence
+Charisma
+Agility
+Luck
+
+dict of regular stats:
+health
+defense
+attack
+happiness
+
+xp
+level
+
+assigned room
+
+dict of inventory:
+main hand
+armour
+sepcial items
+
+list of parents

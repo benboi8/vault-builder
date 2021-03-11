@@ -901,6 +901,44 @@ class Resource:
 			self.value = self.minAmount
 
 
+class Dweller:
+	def __init__(self, dwellerDataFilePath, parents=[]):
+		with open(dwellerDataFilePath, "r") as dwellerDataFile:
+			dwellerData = json.load(dwellerDataFile)
+
+		self.name = dwellerData["names"][random.randint(0, dwellerData["numOfNames"])]
+		self.speicalStats = {
+			"Strength": random.randint(dwellerData["SPECIAL"]["Strength"]["min"], dwellerData["SPECIAL"]["Strength"]["max"]),
+			"Perception": random.randint(dwellerData["SPECIAL"]["Perception"]["min"], dwellerData["SPECIAL"]["Perception"]["max"]),
+			"Endurance": random.randint(dwellerData["SPECIAL"]["Endurance"]["min"], dwellerData["SPECIAL"]["Endurance"]["max"]),
+			"Intelligence": random.randint(dwellerData["SPECIAL"]["Intelligence"]["min"], dwellerData["SPECIAL"]["Intelligence"]["max"]),
+			"Charisma": random.randint(dwellerData["SPECIAL"]["Charisma"]["min"], dwellerData["SPECIAL"]["Charisma"]["max"]),
+			"Agility": random.randint(dwellerData["SPECIAL"]["Agility"]["min"], dwellerData["SPECIAL"]["Agility"]["max"]),
+			"Luck": random.randint(dwellerData["SPECIAL"]["Luck"]["min"], dwellerData["SPECIAL"]["Luck"]["max"])
+		}
+
+		self.stats = {
+			"health": random.randint(dwellerData["stats"]["health"]["min"], dwellerData["stats"]["health"]["max"])
+			"defense": random.randint(dwellerData["stats"]["defense"]["min"], dwellerData["stats"]["defense"]["max"])
+			"attack": random.randint(dwellerData["stats"]["attack"]["min"], dwellerData["stats"]["attack"]["max"])
+			"happiness": random.randint(dwellerData["stats"]["happiness"]["min"], dwellerData["stats"]["happiness"]["max"])			
+		}
+
+		self.xp = dwellerData["xp"]
+		self.level = dwellerData["level"]
+		
+		self.inventory = {
+		"main hand": dwellerData["inventory"]["main hand"],
+		"armour": dwellerData["inventory"]["armour"],
+		"sepcial items": dwellerData["inventory"]["sepcial items"]
+		}
+
+		self.assignedRoom = "none"
+
+		self.parents = parents
+
+
+
 def CreateResources():
 	x, y, w, h = 200, 10, 40, 15
 	for resource in resourceList:
