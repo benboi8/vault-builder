@@ -1,0 +1,21 @@
+{
+  "resources": {
+    "Water": {
+      "value": 50,
+      "activeRooms": 0
+    },
+    "Food": {
+      "value": 50,
+      "activeRooms": 0
+    },
+    "Power": {
+      "value": 50,
+      "activeRooms": 0
+    },
+    "Caps": {
+      "value": 100,
+      "activeRooms": 0
+    }
+  },
+  "buildPage": 6
+}
