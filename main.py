@@ -823,6 +823,7 @@ class Room:
 			if self.counter >= self.workTime:
 				self.seconds = []
 				self.resourcesAvaiable = True
+				# self.CollectResources()
 
 	def AddResource(self):
 		if self.resource != None:
@@ -1201,9 +1202,15 @@ class Dweller:
 
 		for dweller in self.assignedRoom.dwellersWorking:
 			DeAssignDweller(dweller)
+			dweller.UpdateText()
+		DeAssignDweller(self)
 		self.UpdateText()
 		partner.canBreed = True
-		dweller = Dweller(self.surface, (self.rect.x // SF, (self.rect.y // SF) + len(allDwellers[allDwellers.index(self):]) * 18, self.rect.w // SF, self.rect.h // SF), self.color, self.textData)
+
+		x, y, w, h = self.rect.x // SF, (self.rect.y // SF) + len(allDwellers[allDwellers.index(self):]) * 18, self.rect.w // SF, self.rect.h // SF
+
+		dweller = Dweller(self.surface, (x, y, w, h), self.color, self.textData)
+		assignDwellerButton = HoldButton(mainWindow, (x, y, w, h), ("DWELLERS", "ASSIGN"), (colWhite, colLightGray), ("", colDarkGray), lists=[dwellerMenuObjects, allButtons], actionData=[dweller])
 		dwellerData = {
 			"name": self.dwellerData["names"]["male"][random.randint(0, len(self.dwellerData["names"]["male"]) - 1)],
 			"specialStats": {
@@ -1780,13 +1787,13 @@ def DwellerClick(button):
 
 def AssignDweller(dweller):
 	global assignDwellerMode, gameState
-	assignDwellerMode = (True, dweller)
 	gameState = "NONE"
 	for obj in dwellerMenuObjects:
 		if obj in allButtons:
 			obj.active = False
 			if obj.action == "DWELLERS":
 				obj.active = False
+	assignDwellerMode = (True, dweller)
 
 
 def DeAssignDweller(dweller):
@@ -1932,41 +1939,41 @@ def PrimaryButtonPress(event):
 
 
 def SecondaryButtonPress(event):
-	global pressed, sliderMoving
+	global pressed, sliderMoving, assignDwellerMode
 	if event.type == pg.MOUSEBUTTONDOWN:
 		if event.button == 1:
-			if assignDwellerMode[0]:
-				HasRoomBeenClicked()
-
-				for obj in dwellerMenuObjects:
-					if obj in allButtons:
-						if obj.action != "DWELLERS":
-							obj.HandleEvent(event)
-							if obj.active:
-								if obj.action == "DEASSIGN":
-									DeAssignDweller(assignDwellerMode[1])
-								if obj.action == "CANCEL":
-									CancelAssignDweller()					
-
 			if not pressed:
-				if gameState == "NONE":
+				if assignDwellerMode[0]:
 					HasRoomBeenClicked()
 
-				for button in allButtons:
-					if button.active:
-						if button.action == "BUILD PAGE DOWN":
-							BuildPage("down")
-						if button.action == "BUILD PAGE UP":
-							BuildPage("up")
+					for obj in dwellerMenuObjects:
+						if obj in allButtons:
+							if obj.action != "DWELLERS":
+								obj.HandleEvent(event)
+								if obj.active:
+									if obj.action == "DEASSIGN":
+										DeAssignDweller(assignDwellerMode[1])
+									if obj.action == "CANCEL":
+										CancelAssignDweller()
+				else:
+					if gameState == "NONE":
+						HasRoomBeenClicked()
 
-						if gameState == "BUILD" and button.type == "BUILD":
-							BuildClick(button)
+					for button in allButtons:
+						if button.active:
+							if button.action == "BUILD PAGE DOWN":
+								BuildPage("down")
+							if button.action == "BUILD PAGE UP":
+								BuildPage("up")
 
-						if gameState == "SETTINGS" and button.type == "SETTINGS":
-							SettingsClick(button)
+							if gameState == "BUILD" and button.type == "BUILD":
+								BuildClick(button)
 
-						if gameState == "DWELLERS" and button.type == "DWELLERS":
-							DwellerClick(button)
+							if gameState == "SETTINGS" and button.type == "SETTINGS":
+								SettingsClick(button)
+
+							if gameState == "DWELLERS" and button.type == "DWELLERS":
+								DwellerClick(button)
 
 				SliderClicked()
 
@@ -2075,7 +2082,6 @@ def AssignDwellerToRoom(dweller, room):
 
 def UpgradeRoom(button):
 	room = button.actionData["room"]
-	print(room.joinedRooms)
 	for resource in allResources:
 		if resource.name == "Caps":
 			if resource.value - room.upgradeCost >= resource.minAmount:
@@ -2465,6 +2471,19 @@ def CheckSaveDirectory():
 
 
 def CheckLoadTime():
+	rootDirectory = os.getcwd()
+	filesInDirectory = [file for file in listdir(os.path.abspath(rootDirectory + "\\saves"))]
+
+	saveDirectoryExistsList = False
+
+	for file in filesInDirectory:
+		if file == "lastTime.json":
+			saveDirectoryExistsList = True
+
+	if not saveDirectoryExistsList:
+		with open(loadMenuTimeFilePath, "w") as loadMenuTimeFile:
+			json.dump({}, fp=loadMenuTimeFile, indent=2)
+
 	with open(loadMenuTimeFilePath, "r") as loadMenuTimeFile:
 		loadMenuTime = json.load(loadMenuTimeFile)
 		for i in range(1, numOFSaveFiles+1):
@@ -2598,8 +2617,8 @@ def SaveRoom(path=saveRoomPath):
 			joinedRoomIndexs.append(allRooms.index(joinedRoom))
 		roomData["joinedRooms"].append(joinedRoomIndexs)
 		dwellersWorkingIndex = []
-		for dweller in room.dwellersWorking:
-			dwellersWorkingIndex.append(allDwellers.index(dweller))
+		# for dweller in room.dwellersWorking:
+			# dwellersWorkingIndex.append(allDwellers.index(dweller))
 		roomData["dwellersWorking"].append(dwellersWorkingIndex)
 		roomData["resourcesAvaiable"].append(room.resourcesAvaiable)
 
@@ -2738,19 +2757,15 @@ def LoadRoom(path=loadRoomPath):
 			buildingPages[index].append(room)
 			allRooms.append(room)
 
-		alljoinedRoomsIndex = roomData["joinedRooms"]
-		dwellersWorkingIndex = roomData["dwellersWorking"]
-		joinedRooms = []
-		for joinedRoomIndex in alljoinedRoomsIndex:
-			for joinedRoom in joinedRoomIndex:
-				joinedRooms.append(allRooms[joinedRoom])
-		room.joinedRooms = joinedRooms
+		allDwellersWorkingIndex = roomData["dwellersWorking"]
+	# return allDwellersWorkingIndex
 
-		# dwellersWorking = []
-		# for dweller in dwellersWorkingIndex:
-		# 	dwellersWorking.append(allDwellers[dweller])
-		# room.dwellersWorking = dwellersWorking
-
+		# alljoinedRoomsIndex = roomData["joinedRooms"]
+		# joinedRooms = []
+		# for joinedRoomIndex in alljoinedRoomsIndex:
+		# 	for joinedRoom in joinedRoomIndex:
+		# 		joinedRooms.append(allRooms[joinedRoom])
+		# room.joinedRooms = joinedRooms
 
 
 def LoadGameData(path=loadGamePath):
@@ -2764,9 +2779,16 @@ def LoadGameData(path=loadGamePath):
 			resource.UpdateValue(0)
 
 
-def LoadDwellerData(path=loadDwellerPath):
-	global allDwellers
+def LoadDwellerData(path=loadDwellerPath, roomData=[]):
+	global allDwellers, dwellerMenuObjects
 	allDwellers = []
+	for button in allButtons:
+		for obj in dwellerMenuObjects:
+			if obj in allButtons:
+				if obj.action == "ASSIGN":
+					allButtons.remove(obj) 
+					dwellerMenuObjects.remove(obj)
+
 	with open(path, "r") as dwellerDataFile:
 		dwellerData = json.load(dwellerDataFile)
 
@@ -2826,6 +2848,13 @@ def LoadDwellerData(path=loadDwellerPath):
 		dweller.UpdateText()
 		assignDwellerButton = HoldButton(mainWindow, (x, y, w, h), ("DWELLERS", "ASSIGN"), (colWhite, colLightGray), ("", colDarkGray), lists=[dwellerMenuObjects, allButtons], actionData=[dweller])
 		y += h + 3
+
+		# for room in allRooms:
+		# 	dwellersWorking = []
+		# 	for index in roomData[allRooms.index(room)]:
+		# 		# for index in dwellerIndex:
+		# 		dwellersWorking.append(allDwellers[index])
+		# 	room.dwellersWorking = dwellersWorking
 
 
 def QuitMenu():
@@ -2965,9 +2994,9 @@ def StartGame():
 
 
 			for slider in allSliders:
-				if button.type == "GAME":
+				if slider.type == "GAME":
 					slider.HandleEvent(event)
-				elif button.type == gameState:
+				if slider.type == gameState:
 					slider.HandleEvent(event)
 
 			PrimaryButtonPress(event)
