@@ -88,6 +88,7 @@ buildingButtonListData = [
 ("Training", "trainingRoom"),
 ("Security", "security"),
 ]
+
 roomInfoLabels = []
 roomWidth = 50
 roomHeight = 50
@@ -170,6 +171,36 @@ buttonWidth, buttonHeight = 30, 30
 increaseBuildAreaCost = 1000
 increaseBuildAreaMultiplier = 1.4
 
+
+roomLimits = {
+	"Water purification": 3,
+	"Diner": 3,
+	"Power generator": 3,
+	"Labatory": 1,
+	"Lounge": 2,
+	"Control room": 1,
+	"Lift": -1,
+	"Vault Door": 1,
+	"Radio": 1,
+	"Training Room": 3,
+	"Security": 1,
+	"Shop": 3
+}
+dwellerRoomLimits = {
+	"Water purification": 2,
+	"Diner": 2,
+	"Power generator": 2,
+	"Labatory": 2,
+	"Lounge": 2,
+	"Control room": 0,
+	"Lift": 0,
+	"Vault Door": 3,
+	"Radio": 3,
+	"Training Room": 2,
+	"Security": 4,
+	"Shop": 2
+}
+
 # dwellers
 maxDwellers = 20
 startNumOfDwellers = 10
@@ -177,10 +208,10 @@ dwellerPageMin = 1
 dwellerPageMax = maxDwellers
 assignDwellerMode = (False, None)
 unAssignableRooms = ["Lift", "Control room"]
-
-# dwellerPageMin = min(1, dwellerPageMin)
-# dwellerPageMax = max(dwellerPageMin + 5, dwellerPageMax)
 dwellerPage = dwellerPageMin
+
+resourceXpAmountMin = 1
+resourceXpAmountMax = 3
 
 # used for secondary buttons
 pressed = False
@@ -672,6 +703,7 @@ class Room:
 
 		self.text = self.name
 		self.textSurface = FONT.render(self.text, True, self.textColor)
+		self.levelTextSurface = FONT.render(str(self.level), True, self.textColor)
 
 		self.seconds = []
 		self.counter = 0
@@ -725,6 +757,7 @@ class Room:
 	def Upgrade(self):
 		if self.level + 1 <= self.maxLevel:
 			self.level += 1
+			self.levelTextSurface = FONT.render(str(self.level), True, self.textColor)
 			self.UpdateCost()
 
 	def UpdateCost(self):
@@ -745,6 +778,7 @@ class Room:
 			pg.draw.rect(self.surface, self.color, self.rect)
 			# draw name
 			self.surface.blit(self.textSurface, self.rect)
+			self.surface.blit(self.levelTextSurface, ((self.rect.x + self.rect.w // 2) - self.levelTextSurface.get_width() // 2, (self.rect.y + self.rect.h // 2) - self.levelTextSurface.get_height() // 2))
 
 		if self.selected:
 			DrawRectOutline(self.surface, colLightGreen, self.rect, 1.5 * SF)
@@ -762,12 +796,15 @@ class Room:
 			self.currentFrameOverlay = 0
 		else:
 			self.currentFrameOverlay = 1
-		self.surface.blit(self.overlayAnimation[self.currentFrameOverlay], self.rect)
+		self.surface.blit(self.overlayAnimation[self.currentFrameOverlay], (self.rect.x, self.rect.y))
 
 	def DrawJoined(self):
 		if len(self.joinedRooms) > 1:
 			for joinedRoom in self.joinedRooms:
 				pg.draw.aaline(self.surface, colBlack, (self.rect.x + self.rect.w // 2, self.rect.y + self.rect.h // 2), (joinedRoom.rect.x + joinedRoom.rect.w // 2, joinedRoom.rect.y + joinedRoom.rect.h // 2))
+
+	def DrawDweller(self):
+		DrawRectOutline(self.surface, colRed, self.rect, 5)
 
 	def UpdateRect(self, pos):
 		x, y = pos
@@ -792,9 +829,8 @@ class Room:
 			if self.resource.value + self.resourceAmount <= self.resource.maxAmount:
 				specialMultiplier = 1
 				for dweller in self.dwellersWorking:
-					specialMultiplier += round(dweller.specialStats[self.specialStatType] / 5)
-					print(specialMultiplier)
-				self.resource.value += round(((self.resourceAmount * self.level) * (1.04 * self.numOfJoinedRooms)) * specialMultiplier)
+					specialMultiplier += round(dweller.specialStats[self.specialStatType] / 10)
+				self.resource.value += round(((self.resourceAmount * self.level) * (1.02 * self.numOfJoinedRooms)) * specialMultiplier)
 			else:
 				self.resource.value = self.resource.maxAmount
 			self.resource.UpdateRect()
@@ -802,7 +838,16 @@ class Room:
 	def CollectResources(self):
 		self.resourcesAvaiable = False
 		self.counter = 0
+		for joinedRoom in self.joinedRooms:
+			for dweller in joinedRoom.dwellersWorking:
+				specialMultiplier = max(1, round(dweller.specialStats[self.specialStatType] / 5))
+				xpAmount = round((random.randint(resourceXpAmountMin, resourceXpAmountMax) + (1.1 ** dweller.level) + (1.1 ** self.level + len(self.joinedRooms)) / len(self.joinedRooms)) * specialMultiplier)
+				dweller.AddXp(xpAmount)
+				dweller.UpdateText()
 		self.AddResource()
+
+	def UpdateText(self, text):
+		self.levelTextSurface = FONT.render(str(text), True, self.textColor)
 
 
 class Resource:
@@ -940,7 +985,14 @@ class Dweller:
 		with open(filePath, "r") as dwellerDataFile:
 			dwellerData = json.load(dwellerDataFile)
 
-		self.name = dwellerData["names"][random.randint(0, len(dwellerData["names"]) - 1)]
+		# check if there is not already a gender for loading dwellers
+		if dwellerData["genetics"]["gender"] == -1: self.gender = random.randint(0, 1)
+		else: self.gender = dwellerData["genetics"]["gender"]
+
+		if self.gender == 0:
+			self.name = dwellerData["names"]["male"][random.randint(0, len(dwellerData["names"]["male"]) - 1)]
+		else:
+			self.name = dwellerData["names"]["female"][random.randint(0, len(dwellerData["names"]["female"]) - 1)]
 		self.specialStats = {
 			"strength": random.randint(dwellerData["SPECIAL"]["strength"]["min"], dwellerData["SPECIAL"]["strength"]["max"]),
 			"perception": random.randint(dwellerData["SPECIAL"]["perception"]["min"], dwellerData["SPECIAL"]["perception"]["max"]),
@@ -974,9 +1026,6 @@ class Dweller:
 		self.parents = dwellerData["genetics"]["parents"]
 		# 0 - child, 1 - teen, 2 - adult
 		self.age = dwellerData["genetics"]["age"]
-		# check if there is not already a gender for loading dwellers
-		if dwellerData["genetics"]["gender"] == -1: self.gender = random.randint(0, 1)
-		else: self.gender = dwellerData["genetics"]["gender"]
 
 		self.canBreed = True
 		self.breeding = False
@@ -993,6 +1042,7 @@ class Dweller:
 		self.UpdateText()
 
 	def UpdateText(self):
+		self.font = pg.font.SysFont("arial", self.textSize * SF)
 		textName = self.font.render("Name: {}".format(str(self.name)), True, self.textColor)
 		textStrength = self.font.render("S: {}".format(str(self.specialStats["strength"])), True, self.textColor)
 		textPerception = self.font.render("P: {}".format(str(self.specialStats["perception"])), True, self.textColor)
@@ -1004,12 +1054,15 @@ class Dweller:
 		textHealth = self.font.render("Health: {}".format(str(self.stats["health"])), True, self.textColor)
 		textLevel = self.font.render("Level: {}".format(str(self.level)), True, self.textColor)
 		textXp = self.font.render("Xp: {}".format(str(self.xp)), True, self.textColor)
+		if self.gender == 0:
+			textGender = self.font.render("G: {}".format("Male"), True, self.textColor)
+		else:
+			textGender = self.font.render("G: {}".format("Female"), True, self.textColor)
 		if self.assignedRoom != None:
 			textRoom = self.font.render("Room: {}".format(str(self.assignedRoom.name)), True, self.textColor)
 		else:
 			textRoom = self.font.render("Room: {}".format("None"), True, self.textColor)
-		textGender = self.font.render("G: {}".format(str(self.gender)), True, self.textColor)
-		self.allTexts = [(textName, self.rect.x + (2 * SF)), (textStrength, self.rect.x + (170 * SF)), (textPerception, self.rect.x + (190 * SF)), (textEndurance, self.rect.x + (210 * SF)), (textIntelligence, self.rect.x + (230 * SF)), (textCharisma, self.rect.x + (250 * SF)), (textAgility, self.rect.x + (270 * SF)), (textLuck, self.rect.x + (290 * SF)), (textHealth, self.rect.x + (310 * SF)), (textLevel, self.rect.x + (360 * SF)), (textXp, self.rect.x + (400 * SF)), (textRoom, (self.rect.x + (430 * SF))), (textGender, (self.rect.x + (500 * SF)))]
+		self.allTexts = [(textName, self.rect.x + (2 * SF)), (textGender, self.rect.x + (100 * SF)), (textStrength, self.rect.x + (170 * SF)), (textPerception, self.rect.x + (190 * SF)), (textEndurance, self.rect.x + (210 * SF)), (textIntelligence, self.rect.x + (230 * SF)), (textCharisma, self.rect.x + (250 * SF)), (textAgility, self.rect.x + (270 * SF)), (textLuck, self.rect.x + (290 * SF)), (textHealth, self.rect.x + (310 * SF)), (textLevel, self.rect.x + (360 * SF)), (textXp, self.rect.x + (400 * SF)), (textRoom, (self.rect.x + (430 * SF)))]
 
 	def Draw(self):
 		DrawRectOutline(self.surface, self.color, self.rect)
@@ -1039,7 +1092,7 @@ class Dweller:
 			self.AddXp(0)
 
 	def IncreaseStats(self, name, amount):
-		if name in self.speicalStats:
+		if name in self.specialStats:
 			self.specialStats[name] += amount
 		elif name in self.stats:
 			self.stats[name] += amount
@@ -1082,14 +1135,17 @@ class Dweller:
 		# check if there is not already a gender for loading dwellers
 		self.gender = dwellerData["genetics"]["gender"]
 
+		self.currentTime = int(dt.datetime.utcnow().strftime("%S"))
+
+		self.UpdateText()
+
 	def CheckBreed(self):
 		# room check
 		if self.assignedRoom.name == "Lounge":
 			# check all dwellers in the room
 			for partner in self.assignedRoom.dwellersWorking:
-				# check if dweller isnt check its self
+				# check if dweller isnt its self
 				if self != partner:
-					print(self.name, partner.name)
 					# check if dwellers can breed
 					if self.canBreed and partner.canBreed:
 						# check if dwellers are both adults
@@ -1110,27 +1166,46 @@ class Dweller:
 										return
 
 	def StartBreed(self, partner):
-		print("start")
 		self.partner = partner
 		self.breeding = True
 		self.canBreed = False
 		partner.canBreed = False
+		self.currentTime = int(dt.datetime.utcnow().strftime("%S"))
 		self.startBreedTime = dt.datetime.utcnow().strftime("%S")
-		self.endBreedtime = timedelta(seconds=int(self.startBreedTime) + 20)
-		
+		self.endBreedTime = timedelta(minutes=0, seconds=int(self.startBreedTime) + 20)
+
 	def BreedCounter(self):
 		self.currentTime = int(dt.datetime.utcnow().strftime("%S"))
-		if self.currentTime == int(self.endBreedtime.seconds):
+		endBreedTime = self.endBreedTime.seconds
+		if endBreedTime >= 60:
+			endBreedTime -= 60
+		if endBreedTime - self.currentTime < 0:
+			text = (endBreedTime - self.currentTime) + 60
+		else:
+			text = endBreedTime - self.currentTime
+		self.assignedRoom.UpdateText(str(text))
+
+		if self.currentTime == int(endBreedTime):
 			self.FinishBreed(self.partner)
 
 	def FinishBreed(self, partner):
-		print("Finished")
 		self.breeding = False
 		self.canBreed = True
+
+		specialMultiplier = max(1, round(self.specialStats["charisma"] / 4))
+		xpAmount = round(random.randint(resourceXpAmountMin, resourceXpAmountMax) + (self.level ** 1.2) + (self.partner.level ** 1.2) * specialMultiplier)
+		self.AddXp(xpAmount)
+		specialMultiplier = max(1, round(partner.specialStats["charisma"] / 4))
+		xpAmount = round(random.randint(resourceXpAmountMin, resourceXpAmountMax) + (self.level ** 1.2) + (self.partner.level ** 1.2) * specialMultiplier)
+		self.partner.AddXp(xpAmount)
+
+		for dweller in self.assignedRoom.dwellersWorking:
+			DeAssignDweller(dweller)
+		self.UpdateText()
 		partner.canBreed = True
-		dweller = Dweller(self.surface, (self.rect.x // SF, (self.rect.y // SF) + (len(allDwellers) * 18), self.rect.w // SF, self.rect.h // SF), self.color, self.textData)
+		dweller = Dweller(self.surface, (self.rect.x // SF, (self.rect.y // SF) + len(allDwellers[allDwellers.index(self):]) * 18, self.rect.w // SF, self.rect.h // SF), self.color, self.textData)
 		dwellerData = {
-			"name": self.dwellerData["names"][random.randint(0, len(self.dwellerData["names"]) - 1)],
+			"name": self.dwellerData["names"]["male"][random.randint(0, len(self.dwellerData["names"]["male"]) - 1)],
 			"specialStats": {
 				"strength": min(max(1, round((self.specialStats["strength"] + partner.specialStats["strength"]) / 2) + random.randint(-1, 1)), 10),
 				"perception": min(max(1, round((self.specialStats["perception"] + partner.specialStats["perception"]) / 2) + random.randint(-1, 1)), 10),
@@ -1166,6 +1241,10 @@ class Dweller:
 				"gender": random.randint(0, 1)
 			}
 		}
+		if dwellerData["genetics"]["gender"] == 0:
+			dwellerData["name"] = self.dwellerData["names"]["male"][random.randint(0, len(self.dwellerData["names"]["male"]) - 1)]
+		else:
+			dwellerData["name"] = self.dwellerData["names"]["female"][random.randint(0, len(self.dwellerData["names"]["female"]) - 1)]
 		dweller.ChangeStats(dwellerData)
 
 
@@ -1521,6 +1600,14 @@ def DrawRooms():
 	for room in allRooms:
 		if boundingRect.colliderect(room.rect):
 			room.DrawJoined()
+			if assignDwellerMode[0]:
+				if assignDwellerMode[1] in room.dwellersWorking:
+					room.DrawDweller()
+
+			if room.name == "Lounge":					
+				for dweller in room.dwellersWorking:
+					if not dweller.breeding:
+						room.UpdateText(room.level)
 
 
 def DrawDwellers():
@@ -1679,6 +1766,7 @@ def SettingsClick(button):
 
 
 def DwellerClick(button):
+	global assignDwellerMode
 	if button.action == "DWELLER PAGE UP":
 		ScrollDwellerMenu("up")
 
@@ -1696,6 +1784,7 @@ def AssignDweller(dweller):
 	gameState = "NONE"
 	for obj in dwellerMenuObjects:
 		if obj in allButtons:
+			obj.active = False
 			if obj.action == "DWELLERS":
 				obj.active = False
 
@@ -1703,26 +1792,15 @@ def AssignDweller(dweller):
 def DeAssignDweller(dweller):
 	global assignDwellerMode
 	room = dweller.assignedRoom
-	dweller.assignedRoom = None
-	room.dwellersWorking.remove(dweller)
+	if room != None:
+		dweller.assignedRoom = None
+		room.dwellersWorking.remove(dweller)
 	dweller.UpdateText()
-	for obj in dwellerMenuObjects:
-		if obj in allButtons:
-			obj.active = False
-			if obj.action == "DWELLERS":
-				obj.active = True
-	gameState = "DWELLERS"
 	assignDwellerMode = (False, None)
 
 
 def CancelAssignDweller():
 	global gameState, assignDwellerMode
-	for obj in dwellerMenuObjects:
-		if obj in allButtons:
-			obj.active = False
-			if obj.action == "DWELLERS":
-				obj.active = True
-	gameState = "DWELLERS"
 	assignDwellerMode = (False, None)
 
 
@@ -1833,6 +1911,8 @@ def PrimaryButtonPress(event):
 								QuitButtonClick(button)
 							else:
 								if button.active:
+									if button.action == "DWELLERS":
+										CancelAssignDweller()
 									if button.action in allActions:
 										gameState = button.action
 										# prevent multiple buttons being active
@@ -1860,12 +1940,13 @@ def SecondaryButtonPress(event):
 
 				for obj in dwellerMenuObjects:
 					if obj in allButtons:
-						obj.HandleEvent(event)
-						if obj.active:
-							if obj.action == "DEASSIGN":
-								DeAssignDweller(assignDwellerMode[1])
-							if obj.action == "CANCEL":
-								CancelAssignDweller()					
+						if obj.action != "DWELLERS":
+							obj.HandleEvent(event)
+							if obj.active:
+								if obj.action == "DEASSIGN":
+									DeAssignDweller(assignDwellerMode[1])
+								if obj.action == "CANCEL":
+									CancelAssignDweller()					
 
 			if not pressed:
 				if gameState == "NONE":
@@ -1978,27 +2059,29 @@ def RoomClicked(room):
 
 def AssignDwellerToRoom(dweller, room):
 	global assignDwellerMode
-	if room.name not in unAssignableRooms:
-		dweller.assignedRoom = room
-		room.dwellersWorking.append(dweller)
-		dweller.UpdateText()
-	for obj in dwellerMenuObjects:
-		if obj in allButtons:
-			obj.active = False
-			if obj.action == "DWELLERS":
-				obj.active = True
-	gameState = "DWELLERS"
-	assignDwellerMode = (False, None)
+	if dweller.assignedRoom != None:
+		dweller.assignedRoom.dwellersWorking.remove(dweller)
+		dweller.assignedRoom = None
+
+	if len(room.dwellersWorking) + 1 <= dwellerRoomLimits[room.name]:
+		if room.name not in unAssignableRooms:
+			if dweller not in room.dwellersWorking:
+				dweller.assignedRoom = room
+				room.dwellersWorking.append(dweller)
+				dweller.UpdateText()
+				assignDwellerMode = (False, None)
+				dweller.CheckBreed()
 
 
 def UpgradeRoom(button):
 	room = button.actionData["room"]
-	for joinedRoom in room.joinedRooms:
-		for resource in allResources:
-			if resource.name == "Caps":
-				if resource.value - joinedRoom.upgradeCost / joinedRoom.numOfJoinedRooms >= resource.minAmount:
-					resource.value -= joinedRoom.upgradeCost / joinedRoom.numOfJoinedRooms
-					joinedRoom.amountSpent += joinedRoom.upgradeCost
+	print(room.joinedRooms)
+	for resource in allResources:
+		if resource.name == "Caps":
+			if resource.value - room.upgradeCost >= resource.minAmount:
+				for joinedRoom in room.joinedRooms:
+					resource.value -= joinedRoom.upgradeCost / len(room.joinedRooms)
+					joinedRoom.amountSpent += joinedRoom.upgradeCost / len(room.joinedRooms)
 					joinedRoom.Upgrade()
 					x, y, w, h = button.rect
 					x /= SF
@@ -2117,8 +2200,18 @@ def DemolishBuild():
 def AddRoom(roomName):
 	room = Room(mainWindow, (0, 0), roomDataFilePath, roomName)
 	if len(tempRooms) == 0:
-		tempRooms.append(room)
-		CalculatePossiblePlacements()
+		numOfRooms = 0
+		for r in allRooms:
+			if r.name == room.name:
+				numOfRooms += 1
+
+		if roomLimits[room.name] == -1:
+			tempRooms.append(room)
+			CalculatePossiblePlacements()
+		else:
+			if numOfRooms + 1 <= roomLimits[room.name]:
+				tempRooms.append(room)
+				CalculatePossiblePlacements()
 
 
 def MoveRoom(event):
@@ -2420,7 +2513,45 @@ def SetDeafaultSaveValues():
 	with open(dwellerDataFilePath, "r") as dwellerDataFile:
 		dwellerData = json.load(dwellerDataFile)
 
-	return roomData, gameData, dwellerData
+		data = {
+			"names": [],
+			"specialStats": {
+				"strength": [],
+				"perception": [],
+				"endurance": [],
+				"intelligence": [],
+				"charisma": [],
+				"agility": [],
+				"luck": []
+			},
+			"stats": {
+				"health": [],
+				"defense": [],
+				"attack": [],
+				"happiness": []
+			},
+			"levelData": {
+				"xp": [],
+				"level": [],
+				"levelThresholdData": {
+					"levelThreshold": [],
+					"levelThresholdMultipler": []
+					},
+			},
+			"inventory": {
+				"main hand": [],
+				"armour": [],
+				"sepcial items": []
+			},
+			"assignedRoom": [],
+			"genetics": {
+				"parents": [],
+				"age": [],
+				"gender": []
+			}
+		}
+
+	return roomData, gameData, data
 
 
 def Save(roomPath=saveRoomPath, gameDataPath=saveGamePath, dwellerPath=saveDwellerPath):
@@ -2446,19 +2577,31 @@ def SaveRoom(path=saveRoomPath):
 		"roomRects": [],
 		"roomNames": [],
 		"roomIndexs": [],
-		"roomLevels": []
+		"roomLevels": [],
+		"joinedRooms": [],
+		"dwellersWorking": [],
+		"resourcesAvaiable": []
 	}
 	for room in allRooms[numOfStartingRooms:]:
 		roomData["numOfRooms"] += 1
 		x, y, w, h = room.rect
 		roomData["roomRects"].append([x // SF, y // SF])
 		roomData["roomNames"].append(room.roomName)
-		for i, page in enumerate(buildingPages):
+		for page in buildingPages:
 			if room in page:
 				index = buildingPages.index(page)
 				break
 		roomData["roomIndexs"].append(index)
 		roomData["roomLevels"].append(room.level)
+		joinedRoomIndexs = []
+		for joinedRoom in room.joinedRooms:
+			joinedRoomIndexs.append(allRooms.index(joinedRoom))
+		roomData["joinedRooms"].append(joinedRoomIndexs)
+		dwellersWorkingIndex = []
+		for dweller in room.dwellersWorking:
+			dwellersWorkingIndex.append(allDwellers.index(dweller))
+		roomData["dwellersWorking"].append(dwellersWorkingIndex)
+		roomData["resourcesAvaiable"].append(room.resourcesAvaiable)
 
 	with open(path, "w") as saveFile:
 		json.dump(roomData, fp=saveFile, indent=2)
@@ -2546,7 +2689,11 @@ def SaveDwellerData(path=saveDwellerPath):
 			assignedRoom = allRooms.index(dweller.assignedRoom)
 		else:
 			assignedRoom = None
-		parents = dweller.parents
+		parents = []
+		if len(dweller.parents) > 0:
+			for parent in dweller.parents:
+				parents.append(allDwellers.index(parent))
+
 		age = dweller.age
 		gender = dweller.gender
 		dwellerData["names"].append(name)
@@ -2583,10 +2730,27 @@ def LoadRoom(path=loadRoomPath):
 			name = roomData["roomNames"][i]	
 			index = roomData["roomIndexs"][i]
 			level = roomData["roomLevels"][i]
+			resourcesAvaiable = roomData["resourcesAvaiable"][i]
 			room = Room(mainWindow, (rect[0], rect[1]), roomDataFilePath, name)
 			room.level = level
+			room.resourcesAvaiable = resourcesAvaiable
+
 			buildingPages[index].append(room)
 			allRooms.append(room)
+
+		alljoinedRoomsIndex = roomData["joinedRooms"]
+		dwellersWorkingIndex = roomData["dwellersWorking"]
+		joinedRooms = []
+		for joinedRoomIndex in alljoinedRoomsIndex:
+			for joinedRoom in joinedRoomIndex:
+				joinedRooms.append(allRooms[joinedRoom])
+		room.joinedRooms = joinedRooms
+
+		# dwellersWorking = []
+		# for dweller in dwellersWorkingIndex:
+		# 	dwellersWorking.append(allDwellers[dweller])
+		# room.dwellersWorking = dwellersWorking
+
 
 
 def LoadGameData(path=loadGamePath):
@@ -2653,6 +2817,11 @@ def LoadDwellerData(path=loadDwellerPath):
 		}
 		if data["assignedRoom"] != None:
 			data["assignedRoom"] = allRooms[data["assignedRoom"]]
+		parents = []
+		if len(data["genetics"]["parents"]) > 0:
+			for parent in data["genetics"]["parents"]:
+				parents.append(allDwellers[parent])
+		data["genetics"]["parents"] = parents
 		dweller.ChangeStats(data)
 		dweller.UpdateText()
 		assignDwellerButton = HoldButton(mainWindow, (x, y, w, h), ("DWELLERS", "ASSIGN"), (colWhite, colLightGray), ("", colDarkGray), lists=[dwellerMenuObjects, allButtons], actionData=[dweller])
@@ -2776,6 +2945,10 @@ def StartGame():
 	DrawLoop()
 
 	while running:
+		for dweller in allDwellers:
+			if dweller.breeding:
+				dweller.BreedCounter()
+
 		clock.tick(FPS)
 		for event in pg.event.get():
 			HandleKeyboard(event)
@@ -2789,6 +2962,7 @@ def StartGame():
 					button.HandleEvent(event)
 				elif button.type == gameState:
 					button.HandleEvent(event)
+
 
 			for slider in allSliders:
 				if button.type == "GAME":
@@ -2804,6 +2978,12 @@ def StartGame():
 		for room in allRooms:
 			if room.resource != None:
 				room.Timer()
+
+		if gameState == "DWELLERS":
+			for obj in dwellerMenuObjects:
+				if obj in allButtons:
+					if obj.action != "DWELLERS":
+						obj.active = False
 
 		DrawLoop()
 		UpdateAnimations()
@@ -2870,6 +3050,7 @@ def StartMenu():
 
 	if startGame:
 		StartGame()
+
 
 CheckSaveDirectory()
 StartMenu()
