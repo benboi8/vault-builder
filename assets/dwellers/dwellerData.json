@@ -1,0 +1,74 @@
+{
+	"names": {
+		"male": ["Dave", "Flynn", "Gordon", "Hawke", "Jet", "Markus", "Ricardo", "Richard", "Ned", "Marc", "Will", "Winifred", "Adrian", "Arnold", "Vincent", "Tyler", "Samuel", "Ronald", "Pete", "Phillips", "Peter", "Oliver", "Norm", "Miller", "Logan", "Liam", "Kennedy", "Joel", "Harrison", "Humphrey", "Howard", "Geoffrey", "Dominic", "Charlie", "Carl", "Clint", "Brian", "Boston"],
+		"female": ["Amanda", "Georgia", "Jet", "Kylie", "Sidney", "Rhonda", "Scarlett", "Spring", "Salma", "Shelly", "Zoe", "Angel", "Alexis", "Aubrey", "Olivia", "Nova", "Nancy", "Mohammed", "Molly", "Madelyn", "Marie", "Liliana", "Kaitlyn", "Kelly", "Jasmine", "Izzie", "Jo", "Hannah", "Hazel", "Gianna", "Fiona", "Emma", "Emily", "Elena", "Debra", "Deborah", "Becky", "Betty"]
+	},
+	"SPECIAL": {
+		"strength": {
+			"min": 1,
+			"max": 4
+		},
+		"perception": {
+			"min": 1,
+			"max": 4
+		},
+		"endurance": {
+			"min": 1,
+			"max": 4
+		},
+		"intelligence": {
+			"min": 1,
+			"max": 4
+		},
+		"charisma": {
+			"min": 1,
+			"max": 4
+		},
+		"agility": {
+			"min": 1,
+			"max": 4
+		},
+		"luck": {
+			"min": 1,
+			"max": 4
+		}
+	},
+	"stats": {
+		"health": 100,
+		"defense": {
+			"min": 0,
+			"max": 3
+		},
+		"attack": {
+			"min": 0,
+			"max": 3
+		},
+		"happiness": {
+			"min": 60,
+			"max": 90
+		}
+	},
+	"levelData": {
+		"level": 1,
+		"xp": 0,
+		"levelThresholdData": {
+			"levelThreshold": 100,
+			"levelThresholdMultipler": 2.2
+		},
+		"special": 1,
+		"defense": 2,
+		"attack": 2
+	},
+	"inventory": {
+		"main hand":  null,
+		"armour":  null,
+		"pet": null,
+		"sepcial items":  null
+	},
+	"assignedRoom": null,
+	"genetics": {
+		"parents": [],
+		"age": 2,
+		"gender": -1
+	}
+}

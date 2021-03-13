@@ -1,0 +1,41 @@
+{
+	"names": ["Connor-Jay Philpotts", "Finlay axe man"],
+	"specialStats": {
+		"strength": [5, 10],
+		"perception": [4, 5],
+		"endurance": [4, 7],
+		"intelligence": [3, 4],
+		"charisma": [3, 10],
+		"agility": [3, 4],
+		"luck": [5, 9]
+	},
+	"stats": {
+		"health": [100, 100],
+		"defense": [25, 9],
+		"attack": [50, 10],
+		"happiness": [100, 100]
+	},
+	"levelData": {
+		"level": [1, 1],
+		"xp": [0, 0],
+		"levelThresholdData": {
+			"levelThreshold": [500, 700],
+			"levelThresholdMultipler": [2.4, 2.4]
+		},
+		"special": [1, 1],
+		"defense": [3, 4],
+		"attack": [3, 4]
+	},
+	"inventory": {
+		"main hand":  [null, "The guitar"],
+		"armour":  [null, null],
+		"pet": ["Cat girl", null],
+		"sepcial items":  [null, null]
+	},
+	"assignedRoom": [null, null],
+	"genetics": {
+		"parents": [[], []],
+		"age": [2, 2],
+		"gender": ["M", "M"]
+	}
+}

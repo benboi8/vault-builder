@@ -32,7 +32,8 @@ resourceImagePath = "assets/resources"
 scaledResourceImagePath = "temp/assets/resources"
 resourceDataFilePath = "assets/resourceData.json"
 
-dwellerDataFilePath = "assets/dwellerData.json"
+dwellerDataFilePath = "assets/dwellers/dwellerData.json"
+customDwellerDataFilePath = "assets/dwellers/customDwellers.json"
 
 loadMenuTimeFilePath = "saves/lastTime.json"
 
@@ -153,6 +154,7 @@ startMenuObjects = []
 saveMenuObjects = []
 loadMenuObjects = []
 dwellerMenuObjects = []
+dwellerInfoMenuObjects = []
 
 # demolish
 demolishList = []
@@ -599,13 +601,14 @@ class ProgressBar:
 
 
 class Label:
-	def __init__(self, surface, rect, gameStateType, colors, textData, drawData=[False, False, True], lists=[allLabels], extraText=[]):
+	def __init__(self, surface, rect, gameStateType, colors, textData, drawData=[False, False, True], lists=[allLabels], extraText=[], extraData=[]):
 		"""
 		Parameters:
 			gameStateType: Which gameState to be drawn in
 			colors: tuple of border color, background color
 			textData: tuple of text, text color, font size, how to align text
 			drawData: tuple of rounded edges, addititve, filled
+			extraText: any additional text
 			extraData: any additional data
 		"""
 		self.surface = surface
@@ -623,6 +626,7 @@ class Label:
 		self.filled = drawData[2]
 
 		self.extraText = extraText
+		self.extraData = extraData
 
 		self.Rescale()
 
@@ -639,15 +643,23 @@ class Label:
 		elif self.alignText == "top-center":
 			self.textRect = pg.Rect((self.rect[0] + self.rect[2] // 2) - self.textSurface.get_width() // 2, self.rect[1] + 3 * SF, self.rect[2], self.rect[3])
 		elif self.alignText == "top-left":
-			self.textRext = self.rect
+			self.textRect = (self.rect.x + 5 * SF, self.rect.y + 5 * SF)
 		else:
-			self.textRext = self.rect
+			self.textRect = (self.rect.x + 5 * SF, self.rect.y + 5 * SF)
 
 		self.extraTextSurfaces = []
 		for textData in self.extraText:
 			textSurface = FONT.render(str(textData[0]), True, self.textColor)
-			x, y, w, h = (textData[1][0] * SF, textData[1][1] * SF, textData[1][2] * SF, textData[1][3] * SF)
-			self.extraTextSurfaces.append((textSurface, (x - textSurface.get_width() // 2, y - textSurface.get_height() // 2, w, h)))
+			x, y = textData[1][0] * SF, textData[1][1] * SF
+			if self.alignText == "center-center":
+				self.textRect = pg.Rect((self.rect[0] + self.rect[2] // 2) - self.textSurface.get_width() // 2, (self.rect[1] + self.rect[3] // 2) - self.textSurface.get_height() // 2, self.rect[2], self.rect[3])
+			elif self.alignText == "top-center":
+				self.textRect = pg.Rect((self.rect[0] + self.rect[2] // 2) - self.textSurface.get_width() // 2, self.rect[1] + 3 * SF, self.rect[2], self.rect[3])
+			elif self.alignText == "top-left":
+				self.textRect = (self.rect.x + 5 * SF, self.rect.y + 5 * SF)
+			else:
+				self.textRect = (self.rect.x + 5 * SF, self.rect.y + 5 * SF)
+			self.extraTextSurfaces.append((textSurface, self.textRect))
 
 	def Draw(self):
 		if self.roundedEdges:
@@ -656,7 +668,7 @@ class Label:
 		else:
 			pg.draw.rect(mainWindow, self.backgroundColor, self.rect)
 			if self.borderColor != False:
-				DrawRectOutline(mainWindow, self.borderColor, self.rect, 3 * SF)
+				DrawRectOutline(mainWindow, self.borderColor, self.rect, 1.5 * SF)
 		self.surface.blit(self.textSurface, self.textRect)
 
 		for textSurface in self.extraTextSurfaces:
@@ -664,7 +676,28 @@ class Label:
 
 	def UpdateText(self, text):
 		self.textSurface = self.font.render(text, True, self.textColor)
-		self.textRect = pg.Rect((self.rect[0] + self.rect[2] // 2) - self.textSurface.get_width() // 2, (self.rect[1] + self.rect[3] // 2) - self.textSurface.get_height() // 2, self.rect[2], self.rect[3])
+		if self.alignText == "center-center":
+			self.textRect = pg.Rect((self.rect[0] + self.rect[2] // 2) - self.textSurface.get_width() // 2, (self.rect[1] + self.rect[3] // 2) - self.textSurface.get_height() // 2, self.rect[2], self.rect[3])
+		elif self.alignText == "top-center":
+			self.textRect = pg.Rect((self.rect[0] + self.rect[2] // 2) - self.textSurface.get_width() // 2, self.rect[1] + 3 * SF, self.rect[2], self.rect[3])
+		elif self.alignText == "top-left":
+			self.textRect = (self.rect.x + 5 * SF, self.rect.y + 5 * SF)
+		else:
+			self.textRect = (self.rect.x + 5 * SF, self.rect.y + 5 * SF)
+
+
+	def UpdateExtraText(self, text):
+		self.extraText = text
+		self.extraTextSurfaces = []
+		for textData in self.extraText:
+			textSurface = FONT.render(str(textData[0]), True, self.textColor)
+			x, y = textData[1][0] * SF, textData[1][1] * SF
+			alignText = textData[2]
+			if alignText == "top-left":
+				textRect = (x, y)
+			else:
+				textRect = (x, y)
+			self.extraTextSurfaces.append((textSurface, textRect))
 
 
 class Room:
@@ -976,6 +1009,8 @@ class Dweller:
 		self.surface = surface
 		self.originalRect = rect
 
+		self.drawingInfo = False
+
 		self.color = color
 		self.textData = textData
 		self.text = textData[0]
@@ -991,8 +1026,11 @@ class Dweller:
 
 		if self.gender == 0:
 			self.name = dwellerData["names"]["male"][random.randint(0, len(dwellerData["names"]["male"]) - 1)]
+			self.gender = "M"
 		else:
 			self.name = dwellerData["names"]["female"][random.randint(0, len(dwellerData["names"]["female"]) - 1)]
+			self.gender = "F"
+
 		self.specialStats = {
 			"strength": random.randint(dwellerData["SPECIAL"]["strength"]["min"], dwellerData["SPECIAL"]["strength"]["max"]),
 			"perception": random.randint(dwellerData["SPECIAL"]["perception"]["min"], dwellerData["SPECIAL"]["perception"]["max"]),
@@ -1018,6 +1056,7 @@ class Dweller:
 		self.inventory = {
 			"main hand": dwellerData["inventory"]["main hand"],
 			"armour": dwellerData["inventory"]["armour"],
+			"pet": dwellerData["inventory"]["pet"],
 			"sepcial items": dwellerData["inventory"]["sepcial items"]
 		}
 
@@ -1026,6 +1065,19 @@ class Dweller:
 		self.parents = dwellerData["genetics"]["parents"]
 		# 0 - child, 1 - teen, 2 - adult
 		self.age = dwellerData["genetics"]["age"]
+
+		if self.age == 0:
+			age = "Child"
+		elif self.age == 1:
+			age = "Teen"
+		elif self.age == 2:
+			age = "Adult"
+
+		self.personalInfomation = {
+			"gender": self.gender,
+			"age": age,
+			"height": random.randint(160, 180)
+		}
 
 		self.canBreed = True
 		self.breeding = False
@@ -1049,26 +1101,55 @@ class Dweller:
 
 	def UpdateText(self):
 		self.font = pg.font.SysFont("arial", self.textSize * SF)
-		textName = self.font.render("Name: {}".format(str(self.name)), True, self.textColor)
-		textStrength = self.font.render("S: {}".format(str(self.specialStats["strength"])), True, self.textColor)
-		textPerception = self.font.render("P: {}".format(str(self.specialStats["perception"])), True, self.textColor)
-		textEndurance = self.font.render("E: {}".format(str(self.specialStats["endurance"])), True, self.textColor)
-		textIntelligence = self.font.render("I: {}".format(str(self.specialStats["intelligence"])), True, self.textColor)
-		textCharisma = self.font.render("C: {}".format(str(self.specialStats["charisma"])), True, self.textColor)
-		textAgility = self.font.render("A: {}".format(str(self.specialStats["agility"])), True, self.textColor)
-		textLuck = self.font.render("L: {}".format(str(self.specialStats["luck"])), True, self.textColor)
-		textHealth = self.font.render("Health: {}".format(str(self.stats["health"])), True, self.textColor)
-		textLevel = self.font.render("Level: {}".format(str(self.level)), True, self.textColor)
-		textXp = self.font.render("Xp: {}".format(str(self.xp)), True, self.textColor)
-		if self.gender == 0:
-			textGender = self.font.render("G: {}".format("Male"), True, self.textColor)
-		else:
-			textGender = self.font.render("G: {}".format("Female"), True, self.textColor)
+
+		if self.age == 0:
+			age = "Child"
+		elif self.age == 1:
+			age = "Teen"
+		elif self.age == 2:
+			age = "Adult"
+
+		self.personalInfomation = {
+			"gender": self.gender,
+			"age": age,
+			"height": self.personalInfomation["height"]
+		}
+
+		self.levelData = {
+			"level": self.level,
+			"xp": self.xp,
+			"xp to next level up": self.levelThreshold - self.xp
+		}
+
 		if self.assignedRoom != None:
-			textRoom = self.font.render("Room: {}".format(str(self.assignedRoom.name)), True, self.textColor)
+			roomName = self.assignedRoom.name
 		else:
-			textRoom = self.font.render("Room: {}".format("None"), True, self.textColor)
-		self.allTexts = [(textName, self.rect.x + (2 * SF)), (textGender, self.rect.x + (100 * SF)), (textStrength, self.rect.x + (170 * SF)), (textPerception, self.rect.x + (190 * SF)), (textEndurance, self.rect.x + (210 * SF)), (textIntelligence, self.rect.x + (230 * SF)), (textCharisma, self.rect.x + (250 * SF)), (textAgility, self.rect.x + (270 * SF)), (textLuck, self.rect.x + (290 * SF)), (textHealth, self.rect.x + (310 * SF)), (textLevel, self.rect.x + (360 * SF)), (textXp, self.rect.x + (400 * SF)), (textRoom, (self.rect.x + (430 * SF)))]
+			roomName = None
+		textObjs = [
+		(str(self.name), 2),
+		("G: {}".format(str(self.gender)), 85),
+		("Pet: {}".format(str(self.inventory["pet"])), 115),
+		("S: {}".format(str(self.specialStats["strength"])), 175),
+		("P: {}".format(str(self.specialStats["perception"])), 195),
+		("E: {}".format(str(self.specialStats["endurance"])), 215),
+		("I: {}".format(str(self.specialStats["intelligence"])), 235),
+		("C: {}".format(str(self.specialStats["charisma"])), 255),
+		("A: {}".format(str(self.specialStats["agility"])), 275),
+		("L: {}".format(str(self.specialStats["luck"])), 295),
+		("Health: {}".format(str(self.stats["health"])), 320),
+		("Lvl: {}".format(str(self.level)), 375),
+		("Room: {}".format(str(roomName)), 405)
+		]
+		allTextSurfaces = []
+		for textData in textObjs:
+			textSurface = self.font.render(textData[0], True, self.textColor)
+			allTextSurfaces.append((textSurface, textData[1]))
+		
+		self.allTexts = []
+		for textData in allTextSurfaces:
+			x = self.rect.x
+			x += textData[1] * SF
+			self.allTexts.append((textData[0], x))
 
 	def Draw(self):
 		DrawRectOutline(self.surface, self.color, self.rect)
@@ -1130,6 +1211,7 @@ class Dweller:
 		self.inventory = {
 			"main hand": dwellerData["inventory"]["main hand"],
 			"armour": dwellerData["inventory"]["armour"],
+			"pet": dwellerData["inventory"]["pet"],
 			"sepcial items": dwellerData["inventory"]["sepcial items"]
 		}
 
@@ -1327,8 +1409,68 @@ def CreateDwellers():
 	h = 15
 	for i in range(0, startNumOfDwellers):
 		dweller = Dweller(mainWindow, (x, y, w, h), colLightGreen, ("", colLightGreen, 8))
-		assignDwellerButton = HoldButton(mainWindow, (x, y, w, h), ("DWELLERS", "ASSIGN"), (colWhite, colLightGray), ("", colDarkGray), lists=[dwellerMenuObjects, allButtons], actionData=[dweller])
+		assignDwellerButton = HoldButton(mainWindow, (x, y, w - 90, h), ("DWELLERS", "ASSIGN"), (colWhite, colLightGray), ("", colDarkGray), lists=[dwellerMenuObjects, allButtons], actionData=[dweller])
+		infoDwellerButton = HoldButton(mainWindow, (x + w - 90, y, 90, h), ("DWELLERS", "INFO"), (colGreen, colLightGreen), ("Info", colDarkGray), lists=[dwellerMenuObjects, allButtons], actionData=[dweller])
 		y += h + 3
+
+	CreateCustomDwellers()
+
+
+def CreateCustomDwellers():
+	x, y, w, h = allDwellers[-1].rect
+	x /= SF
+	y /= SF
+	w /= SF
+	h /= SF
+	y += h + 3
+	with open(customDwellerDataFilePath, "r") as customDwellerDataFile:
+		dwellerData = json.load(customDwellerDataFile)
+
+	for i in range(len(dwellerData["names"])):
+		dweller = Dweller(mainWindow, (x, y, w, h), colLightGreen, ("", colLightGreen, 8))
+		assignDwellerButton = HoldButton(mainWindow, (x, y, w - 90, h), ("DWELLERS", "ASSIGN"), (colWhite, colLightGray), ("", colDarkGray), lists=[dwellerMenuObjects, allButtons], actionData=[dweller])
+		infoDwellerButton = HoldButton(mainWindow, (x + w - 90, y, 90, h), ("DWELLERS", "INFO"), (colGreen, colLightGreen), ("Info", colDarkGray), lists=[dwellerMenuObjects, allButtons], actionData=[dweller])
+		y += h + 3
+		data = {
+			"name": dwellerData["names"][i],
+			"specialStats": {
+				"strength": dwellerData["specialStats"]["strength"][i],
+				"perception": dwellerData["specialStats"]["perception"][i],
+				"endurance": dwellerData["specialStats"]["endurance"][i],
+				"intelligence": dwellerData["specialStats"]["intelligence"][i],
+				"charisma": dwellerData["specialStats"]["charisma"][i],
+				"agility": dwellerData["specialStats"]["agility"][i],
+				"luck": dwellerData["specialStats"]["luck"][i]
+			},
+			"stats": {
+				"health": dwellerData["stats"]["health"][i],
+				"defense": dwellerData["stats"]["defense"][i],
+				"attack": dwellerData["stats"]["attack"][i],
+				"happiness": dwellerData["stats"]["happiness"][i]
+			},
+			"levelData": {
+				"xp": dwellerData["levelData"]["xp"][i],
+				"level": dwellerData["levelData"]["level"][i],
+				"levelThresholdData": {
+					"levelThreshold": dwellerData["levelData"]["levelThresholdData"]["levelThreshold"][i],
+					"levelThresholdMultipler": dwellerData["levelData"]["levelThresholdData"]["levelThresholdMultipler"][i]
+				},
+			},
+			"inventory": {
+				"main hand": dwellerData["inventory"]["main hand"][i],
+				"armour": dwellerData["inventory"]["armour"][i],
+				"pet": dwellerData["inventory"]["pet"][i],
+				"sepcial items": dwellerData["inventory"]["sepcial items"][i]
+			},
+			"assignedRoom": dwellerData["assignedRoom"][i],
+			"genetics": {
+				"parents": dwellerData["genetics"]["parents"][i],
+				"age": dwellerData["genetics"]["age"][i],
+				"gender": dwellerData["genetics"]["gender"][i]
+			}
+		}
+		dweller.ChangeStats(data)
+		dweller.UpdateText()
 
 
 def CreateButtons():
@@ -1388,6 +1530,22 @@ def CreateDwellerButtons():
 	
 	deAssignButton = HoldButton(mainWindow, (605, 320, buttonWidth, buttonHeight), ("DWELLERS", "DEASSIGN"), (colWhite, colLightGray), ("Un-assign", colDarkGray), lists=[dwellerMenuObjects, allButtons])
 	cancel = HoldButton(mainWindow, (605, 280, buttonWidth, buttonHeight), ("DWELLERS", "CANCEL"), (colWhite, colLightGray), ("Cancel", colDarkGray), lists=[dwellerMenuObjects, allButtons])
+	CreateDwellerInfo()
+
+
+def CreateDwellerInfo():
+	back = HoldButton(mainWindow, (270, 240, 100, 50), ("DWELLER INFO", "BACK"), (colWhite, colLightGray), ("Back", colDarkGray), lists=[dwellerInfoMenuObjects, allButtons])
+	50.5
+	50.5
+	550
+	249
+	fullName = Label(mainWindow, (55, 55, 540, 30), "DWELLER INFO", (colLightGreen, colLightGreen), ("", colLightGreen, 16, "center-center"), [True, False, True], lists=[dwellerInfoMenuObjects], extraData=["name"])
+	specialStats = Label(mainWindow, (60, 110, 65, 95), "DWELLER INFO", (colLightGreen, colDarkGray), ("SPECIAL:", colLightGreen, 10, "top-left"), [False, False, True], lists=[dwellerInfoMenuObjects], extraData=["specialStats"])
+	stats = Label(mainWindow, (135, 110, 65, 65), "DWELLER INFO", (colLightGreen, colDarkGray), ("STATS:", colLightGreen, 10, "top-left"), [False, False, True], lists=[dwellerInfoMenuObjects], extraData=["stats"])
+	inventory = Label(mainWindow, (210, 110, 150, 65), "DWELLER INFO", (colLightGreen, colDarkGray), ("INVENTORY:", colLightGreen, 10, "top-left"), [False, False, True], lists=[dwellerInfoMenuObjects], extraData=["inventory"])
+	assignedRoom = Label(mainWindow, (60, 210, 140, 45), "DWELLER INFO", (colLightGreen, colDarkGray), ("Assigned Room:", colLightGreen, 10, "top-left"), [False, False, True], lists=[dwellerInfoMenuObjects], extraData=["assignedRoom"])
+	personalInfomation = Label(mainWindow, (400, 110, 150, 65), "DWELLER INFO", (colLightGreen, colDarkGray), ("Genetics:", colLightGreen, 10, "top-left"), [False, False, True], lists=[dwellerInfoMenuObjects], extraData=["personalInfomation"])
+	level = Label(mainWindow, (400, 210, 150, 65), "DWELLER INFO", (colLightGreen, colDarkGray), ("Leveling:", colLightGreen, 10, "top-left"), [False, False, True], lists=[dwellerInfoMenuObjects], extraData=["levelData"])
 
 
 def ScrollDwellerMenu(direction):
@@ -1635,10 +1793,12 @@ def DrawLoop():
 			for placementOption in placementOptions:
 				DrawRectOutline(mainWindow, colOrange, placementOption, 4)
 	
-	if gameState != "DWELLERS":
-		DrawRooms()
-	else:
+	if gameState == "DWELLERS":
 		DrawDwellers()
+	elif gameState == "DWELLER INFO":
+		DrawDwellerInfo()
+	else:
+		DrawRooms()
 
 	if assignDwellerMode[0]:
 		for obj in dwellerMenuObjects:
@@ -1652,6 +1812,39 @@ def DrawLoop():
 		DrawConfirmQuit()
 
 	pg.display.update()
+
+
+def DrawDwellerInfo():
+	pg.draw.rect(mainWindow, colDarkGray, boundingRect)
+	for dweller in allDwellers:
+		if dweller.drawingInfo:
+			break
+
+	for obj in dwellerInfoMenuObjects:
+		if obj not in allButtons:
+			if obj.extraData[0] in dweller.__dict__:
+				x, y = (obj.rect.x // SF) + 5, (obj.rect.y // SF) + 20
+				allStats = []
+				attribute = dweller.__dict__[obj.extraData[0]]
+				try:
+					for stat in attribute:
+						allStats.append((("{}: {}".format(str(stat[0].upper() + str(stat[1:])), str(attribute[stat]))), (x, y), "center-left"))
+						y += 5 * SF
+					obj.UpdateExtraText(allStats)
+				except:
+					attributeName = ""
+					for char in obj.extraData[0]:
+						if char.isupper():
+							attributeName += " "
+						attributeName += char
+					
+					attributeName = attributeName[0].upper() + attributeName[1:]
+
+					text = "{}: {}".format(attributeName, str(attribute))
+					obj.UpdateText(text)
+
+		obj.Draw()
+
 
 
 def DrawRooms():
@@ -1828,16 +2021,37 @@ def SettingsClick(button):
 
 
 def DwellerClick(button):
-	global assignDwellerMode
+	global assignDwellerMode, gameState
 	if button.action == "DWELLER PAGE UP":
 		ScrollDwellerMenu("up")
 
 	if button.action == "DWELLER PAGE DOWN":
 		ScrollDwellerMenu("down")
 
+	if button.action == "BACK":
+		for dweller in allDwellers:
+			if dweller.drawingInfo:
+				DwellerInfo(dweller)
+
 	if button.rect.colliderect(boundingRect):
+		if button.action == "INFO":
+			DwellerInfo(button.actionData[0])
+			button.active = False
+
 		if button.action == "ASSIGN":
 			AssignDweller(button.actionData[0])
+
+
+def DwellerInfo(dweller):
+	global gameState
+	for d in allDwellers:
+		d.drawingInfo = False
+
+	if gameState == "DWELLER INFO":
+		gameState = "DWELLERS"
+	else:
+		gameState = "DWELLER INFO"
+	dweller.drawingInfo = not dweller.drawingInfo
 
 
 def AssignDweller(dweller):
@@ -1966,31 +2180,32 @@ def PrimaryButtonPress(event):
 	if gameState != "START MENU":
 		if gameState != "SAVE MENU":
 			if gameState != "LOAD MENU":
-				if event.type == pg.MOUSEBUTTONUP:
-					if event.button == 1:
-						for button in allButtons:
-							if gameState == "CONFIRM QUIT":
-								QuitButtonClick(button)
-							else:
-								if button.active:
-									if button.action == "DWELLERS":
-										CancelAssignDweller()
-									if button.action in allActions:
-										gameState = button.action
-										# prevent multiple buttons being active
-										for b in allButtons:
-											if b.type == "GAME":
-												if b != button:
-													b.active = False
-										return
+				if gameState != "DWELLER INFO":
+					if event.type == pg.MOUSEBUTTONUP:
+						if event.button == 1:
+							for button in allButtons:
+								if gameState == "CONFIRM QUIT":
+									QuitButtonClick(button)
 								else:
-									if gameState != "BUILD":
-										gameState = "NONE"
-										CancelBuild()
+									if button.active:
+										if button.action == "DWELLERS":
+											CancelAssignDweller()
+										if button.action in allActions:
+											gameState = button.action
+											# prevent multiple buttons being active
+											for b in allButtons:
+												if b.type == "GAME":
+													if b != button:
+														b.active = False
+											return
 									else:
-										if button.action == "BUILD":
+										if gameState != "BUILD":
 											gameState = "NONE"
 											CancelBuild()
+										else:
+											if button.action == "BUILD":
+												gameState = "NONE"
+												CancelBuild()
 
 
 def SecondaryButtonPress(event):
@@ -2028,6 +2243,9 @@ def SecondaryButtonPress(event):
 								SettingsClick(button)
 
 							if gameState == "DWELLERS" and button.type == "DWELLERS":
+								DwellerClick(button)
+
+							if gameState == "DWELLER INFO" and button.type == "DWELLER INFO":
 								DwellerClick(button)
 
 				SliderClicked()
@@ -2260,6 +2478,7 @@ def DemolishBuild():
 
 def AddRoom(roomName):
 	room = Room(mainWindow, (0, 0), roomDataFilePath, roomName)
+	CancelBuild()
 	if len(tempRooms) == 0:
 		numOfRooms = 0
 		for r in allRooms:
@@ -2618,6 +2837,7 @@ def SetDeafaultSaveValues():
 		"inventory": {
 			"main hand": [],
 			"armour": [],
+			"pet": [],
 			"sepcial items": []
 		},
 		"assignedRoom": [],
@@ -2751,6 +2971,7 @@ def SaveDwellerData(path=saveDwellerPath):
 		"inventory": {
 			"main hand": [],
 			"armour": [],
+			"pet": [],
 			"sepcial items": []
 		},
 		"assignedRoom": [],
@@ -2824,6 +3045,9 @@ def LoadRoom(path=loadRoomPath):
 			allRooms.append(room)
 
 		allDwellersWorkingIndex = roomData["dwellersWorking"]
+
+	for room in allRooms:
+		room.UpdateText(room.level)
 	# return allDwellersWorkingIndex
 
 		# alljoinedRoomsIndex = roomData["joinedRooms"]
@@ -2894,6 +3118,7 @@ def LoadDwellerData(path=loadDwellerPath, roomData=[]):
 			"inventory": {
 				"main hand": dwellerData["inventory"]["main hand"][i],
 				"armour": dwellerData["inventory"]["armour"][i],
+				"pet": dwellerData["inventory"]["pet"][i],
 				"sepcial items": dwellerData["inventory"]["sepcial items"][i]
 			},
 			"assignedRoom": dwellerData["assignedRoom"][i],
@@ -2994,6 +3219,7 @@ def HandleKeyboard(event):
 			if event.key == pg.K_ESCAPE:
 				QuitMenu()
 		if event.type == pg.KEYDOWN:
+
 			if event.key == pg.K_UP:
 				if gameState == "DWELLERS":
 					ScrollDwellerMenu("up")

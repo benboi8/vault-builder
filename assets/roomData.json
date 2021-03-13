@@ -199,7 +199,7 @@
 		"levelData": {
 			"level": 1,
 			"maxLevel": 5,
-			"baseCost": 100,
+			"baseCost": 200,
 			"multiplier": 1.9,
 			"joinedRooms": [],
 			"maxJoinedRooms": 0
