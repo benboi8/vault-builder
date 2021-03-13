@@ -1,0 +1,7 @@
+13/03/2021
+added custom characters
+changed vault door upgrade cost to 200 from 100
+add pets to dwellers info
+fixed room level not being updated on load
+switching rooms in build menu cancels current selection
+added dweller info
