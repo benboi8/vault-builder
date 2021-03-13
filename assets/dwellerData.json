@@ -1,5 +1,8 @@
 {
-	"names": ["Amanda", "Dave", "Flynn", "Georgia", "Gordon", "Hawke", "Jet", "Kylie", "Markus"],
+	"names": {
+		"male": ["Dave", "Flynn", "Gordon", "Hawke", "Jet", "Markus", "Ricardo", "Richard", "Ned", "Marc", "Will", "Winifred", "Adrian", "Arnold", "Vincent", "Tyler", "Samuel", "Ronald", "Pete", "Phillips", "Peter", "Oliver", "Norm", "Miller", "Logan", "Liam", "Kennedy", "Joel", "Harrison", "Humphrey", "Howard", "Geoffrey", "Dominic", "Charlie", "Carl", "Clint", "Brian", "Boston"],
+		"female": ["Amanda", "Georgia", "Jet", "Kylie", "Sidney", "Rhonda", "Scarlett", "Spring", "Salma", "Shelly", "Zoe", "Angel", "Alexis", "Aubrey", "Olivia", "Nova", "Nancy", "Mohammed", "Molly", "Madelyn", "Marie", "Liliana", "Kaitlyn", "Kelly", "Jasmine", "Izzie", "Jo", "Hannah", "Hazel", "Gianna", "Fiona", "Emma", "Emily", "Elena", "Debra", "Deborah", "Becky", "Betty"]
+	},
 	"SPECIAL": {
 		"strength": {
 			"min": 1,
