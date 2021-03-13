@@ -2,7 +2,6 @@ import pygame as pg
 from pygame import gfxdraw
 import datetime as dt
 from datetime import timedelta 
-import cv2
 import json
 from PIL import Image
 import os
@@ -1030,6 +1029,12 @@ class Dweller:
 
 		self.canBreed = True
 		self.breeding = False
+		self.breedingCoolDown = False
+		# in seconds
+		self.breedDelay = 10
+		self.dwellerSaveTimeFilePath = "saves/Save {}/dwellerTimes.json".format(saveNum)
+		self.startTime = 0
+		self.endTime = 0
 
 		self.dwellerData = dwellerData
 
@@ -1192,6 +1197,9 @@ class Dweller:
 	def FinishBreed(self, partner):
 		self.breeding = False
 		self.canBreed = True
+		self.breedingCoolDown = True
+
+		self.SaveTimes()
 
 		specialMultiplier = max(1, round(self.specialStats["charisma"] / 4))
 		xpAmount = round(random.randint(resourceXpAmountMin, resourceXpAmountMax) + (self.level ** 1.2) + (self.partner.level ** 1.2) * specialMultiplier)
@@ -1254,6 +1262,47 @@ class Dweller:
 			dwellerData["name"] = self.dwellerData["names"]["female"][random.randint(0, len(self.dwellerData["names"]["female"]) - 1)]
 		dweller.ChangeStats(dwellerData)
 
+	def SaveTimes(self):
+		self.startTime = int(dt.datetime.utcnow().strftime("%S"))
+		endTime = timedelta(seconds=(self.startTime + self.breedDelay))
+		self.endTime = endTime.seconds
+		for dweller in self.assignedRoom.dwellersWorking:
+			with open(self.dwellerSaveTimeFilePath, "r") as dwellerSaveTimeFile:
+				dwellerSaveTimeData = json.load(dwellerSaveTimeFile)
+				dwellerSaveTimeFile.close()
+
+			dwellerSaveTimeData["index"].append(allDwellers.index(dweller))
+			dwellerSaveTimeData["time"]["start"].append(self.startTime)
+			dwellerSaveTimeData["time"]["end"].append(self.endTime)
+
+			with open(self.dwellerSaveTimeFilePath, "w") as dwellerSaveTimeFile:
+				json.dump(dwellerSaveTimeData, fp=dwellerSaveTimeFile, indent=2)
+
+	def LoadTimes(self):
+		with open(self.dwellerSaveTimeFilePath, "r") as dwellerSaveTimeFile:
+			dwellerSaveTimeData = json.load(dwellerSaveTimeFile)
+			dwellerSaveTimeFile.close()
+
+		allIndex = dwellerSaveTimeData["index"]
+		allStartTime = dwellerSaveTimeData["time"]["start"]
+		allEndTime = dwellerSaveTimeData["time"]["end"]
+
+		for i, index in enumerate(allIndex):
+			if allDwellers[index] == self:
+				self.startTime = dwellerSaveTimeData["time"]["start"][i]
+				self.endTime = dwellerSaveTimeData["time"]["end"][i]
+
+	def UpdateBreedCoolDown(self, currentTime):
+		# if self.endTime >= 60:
+			# self.endTime -= 60
+		print(currentTime)
+		if self.endTime != 0:
+			if self.endTime - currentTime < 0:
+				print((self.endTime - currentTime) + 60)
+			else:
+				print(self.endTime - currentTime)
+
+
 
 def CreateResources():
 	x, y, w, h = 200, 10, 40, 15
@@ -1273,6 +1322,9 @@ def CreateDwellers():
 		dweller = Dweller(mainWindow, (x, y, w, h), colLightGreen, ("", colLightGreen, 8))
 		assignDwellerButton = HoldButton(mainWindow, (x, y, w, h), ("DWELLERS", "ASSIGN"), (colWhite, colLightGray), ("", colDarkGray), lists=[dwellerMenuObjects, allButtons], actionData=[dweller])
 		y += h + 3
+
+	for dweller in allDwellers:
+		dweller.LoadTimes()
 
 
 def CreateButtons():
@@ -1627,10 +1679,12 @@ def DrawDwellers():
 		else:
 			obj.Draw()
 
-
+	currentTime = int(dt.datetime.utcnow().strftime("%S"))
 	for dweller in allDwellers:
 		if boundingRect.colliderect(dweller.rect):
 			dweller.Draw()
+			if dweller.breedingCoolDown:
+				dweller.UpdateBreedCoolDown(currentTime)
 
 
 def DrawStartMenu():
@@ -2463,6 +2517,9 @@ def CheckSaveDirectory():
 			json.dump(gameData, fp=saveGameFile, indent=2)
 
 		with open("dwellerData.json", "w") as saveGameFile:
+			json.dump(dwellerData, fp=saveGameFile, indent=2)		
+
+		with open("dwellerTimes.json", "w") as saveGameFile:
 			json.dump(dwellerData, fp=saveGameFile, indent=2)
 
 		os.chdir(rootDirectory)
@@ -3085,3 +3142,4 @@ CheckSaveDirectory()
 StartMenu()
 
 pg.quit()
+

@@ -3,5 +3,8 @@
   "roomRects": [],
   "roomNames": [],
   "roomIndexs": [],
-  "roomLevels": []
+  "roomLevels": [],
+  "joinedRooms": [],
+  "dwellersWorking": [],
+  "resourcesAvaiable": []
 }
