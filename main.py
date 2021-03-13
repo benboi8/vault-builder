@@ -232,7 +232,6 @@ def DrawRectOutline(surface, color, rect, width=1):
 
 def DrawObround(surface, color, rect, filled=False, additive=True):
 	x, y, w, h = rect
-
 	radius = h // 2	
 	# check if semicircles are added to the side or replace the side
 	if not additive:
@@ -651,15 +650,18 @@ class Label:
 		for textData in self.extraText:
 			textSurface = FONT.render(str(textData[0]), True, self.textColor)
 			x, y = textData[1][0] * SF, textData[1][1] * SF
-			if self.alignText == "center-center":
-				self.textRect = pg.Rect((self.rect[0] + self.rect[2] // 2) - self.textSurface.get_width() // 2, (self.rect[1] + self.rect[3] // 2) - self.textSurface.get_height() // 2, self.rect[2], self.rect[3])
-			elif self.alignText == "top-center":
-				self.textRect = pg.Rect((self.rect[0] + self.rect[2] // 2) - self.textSurface.get_width() // 2, self.rect[1] + 3 * SF, self.rect[2], self.rect[3])
-			elif self.alignText == "top-left":
-				self.textRect = (self.rect.x + 5 * SF, self.rect.y + 5 * SF)
+			alignText = textData[2]
+			textSurface = FONT.render(str(textData[0]), True, self.textColor)
+			if alignText == "center-center":
+				textRect = pg.Rect((x + self.rect.w // 2) - self.textSurface.get_width() // 2, (y + self.rect.h // 2) - self.textSurface.get_height() // 2, self.rect.w, self.rect.h)
+			elif alignText == "top-center":
+				textRect = pg.Rect((x + self.rect.w // 2) - self.textSurface.get_width() // 2, y + 3 * self.rect.w, self.rect.h)
+			elif alignText == "top-left":
+				textRect = (x + 5 * SF, y + 5 * SF)
 			else:
-				self.textRect = (self.rect.x + 5 * SF, self.rect.y + 5 * SF)
-			self.extraTextSurfaces.append((textSurface, self.textRect))
+				textRect = (x + 5 * SF, y + 5 * SF)
+
+			self.extraTextSurfaces.append((textSurface, textRect))
 
 	def Draw(self):
 		if self.roundedEdges:
@@ -690,6 +692,8 @@ class Label:
 		self.extraText = text
 		self.extraTextSurfaces = []
 		for textData in self.extraText:
+			x, y = textData[1][0] * SF, textData[1][1] * SF
+			alignText = textData[2]
 			textSurface = FONT.render(str(textData[0]), True, self.textColor)
 			x, y = textData[1][0] * SF, textData[1][1] * SF
 			alignText = textData[2]
@@ -1073,10 +1077,12 @@ class Dweller:
 		elif self.age == 2:
 			age = "Adult"
 
+		self.height = random.randint(160, 180)
+
 		self.personalInfomation = {
 			"gender": self.gender,
 			"age": age,
-			"height": random.randint(160, 180)
+			"height": str(self.height) + "cm"
 		}
 
 		self.canBreed = True
@@ -1112,7 +1118,7 @@ class Dweller:
 		self.personalInfomation = {
 			"gender": self.gender,
 			"age": age,
-			"height": self.personalInfomation["height"]
+			"height": str(self.height) + "cm"
 		}
 
 		self.levelData = {
@@ -1127,8 +1133,7 @@ class Dweller:
 			roomName = None
 		textObjs = [
 		(str(self.name), 2),
-		("G: {}".format(str(self.gender)), 85),
-		("Pet: {}".format(str(self.inventory["pet"])), 115),
+		("G: {}".format(str(self.gender)), 150),
 		("S: {}".format(str(self.specialStats["strength"])), 175),
 		("P: {}".format(str(self.specialStats["perception"])), 195),
 		("E: {}".format(str(self.specialStats["endurance"])), 215),
@@ -1222,6 +1227,7 @@ class Dweller:
 		self.age = dwellerData["genetics"]["age"]
 		# check if there is not already a gender for loading dwellers
 		self.gender = dwellerData["genetics"]["gender"]
+		self.height = dwellerData["genetics"]["height"]
 
 		self.currentTime = int(dt.datetime.utcnow().strftime("%S"))
 
@@ -1409,8 +1415,8 @@ def CreateDwellers():
 	h = 15
 	for i in range(0, startNumOfDwellers):
 		dweller = Dweller(mainWindow, (x, y, w, h), colLightGreen, ("", colLightGreen, 8))
-		assignDwellerButton = HoldButton(mainWindow, (x, y, w - 90, h), ("DWELLERS", "ASSIGN"), (colWhite, colLightGray), ("", colDarkGray), lists=[dwellerMenuObjects, allButtons], actionData=[dweller])
-		infoDwellerButton = HoldButton(mainWindow, (x + w - 90, y, 90, h), ("DWELLERS", "INFO"), (colGreen, colLightGreen), ("Info", colDarkGray), lists=[dwellerMenuObjects, allButtons], actionData=[dweller])
+		assignDwellerButton = HoldButton(mainWindow, (x, y, w - 90, h), ("DWELLERS", "ASSIGN"), (colLightGray, colLightGray), ("", colDarkGray), lists=[dwellerMenuObjects, allButtons], actionData=[dweller])
+		infoDwellerButton = HoldButton(mainWindow, (x + w - 90, y, 90, h), ("DWELLERS", "INFO"), (colLightGreen, colLightGreen), ("Info", colDarkGray), lists=[dwellerMenuObjects, allButtons], actionData=[dweller])
 		y += h + 3
 
 	CreateCustomDwellers()
@@ -1466,7 +1472,8 @@ def CreateCustomDwellers():
 			"genetics": {
 				"parents": dwellerData["genetics"]["parents"][i],
 				"age": dwellerData["genetics"]["age"][i],
-				"gender": dwellerData["genetics"]["gender"][i]
+				"gender": dwellerData["genetics"]["gender"][i],
+				"height": dwellerData["genetics"]["height"][i]
 			}
 		}
 		dweller.ChangeStats(data)
@@ -1534,11 +1541,7 @@ def CreateDwellerButtons():
 
 
 def CreateDwellerInfo():
-	back = HoldButton(mainWindow, (270, 240, 100, 50), ("DWELLER INFO", "BACK"), (colWhite, colLightGray), ("Back", colDarkGray), lists=[dwellerInfoMenuObjects, allButtons])
-	50.5
-	50.5
-	550
-	249
+	back = HoldButton(mainWindow, (270, 240, 100, 50), ("DWELLER INFO", "BACK"), (colLightGray, colLightGray), ("Back", colDarkGray), lists=[dwellerInfoMenuObjects, allButtons])
 	fullName = Label(mainWindow, (55, 55, 540, 30), "DWELLER INFO", (colLightGreen, colLightGreen), ("", colLightGreen, 16, "center-center"), [True, False, True], lists=[dwellerInfoMenuObjects], extraData=["name"])
 	specialStats = Label(mainWindow, (60, 110, 65, 95), "DWELLER INFO", (colLightGreen, colDarkGray), ("SPECIAL:", colLightGreen, 10, "top-left"), [False, False, True], lists=[dwellerInfoMenuObjects], extraData=["specialStats"])
 	stats = Label(mainWindow, (135, 110, 65, 65), "DWELLER INFO", (colLightGreen, colDarkGray), ("STATS:", colLightGreen, 10, "top-left"), [False, False, True], lists=[dwellerInfoMenuObjects], extraData=["stats"])
@@ -1546,6 +1549,11 @@ def CreateDwellerInfo():
 	assignedRoom = Label(mainWindow, (60, 210, 140, 45), "DWELLER INFO", (colLightGreen, colDarkGray), ("Assigned Room:", colLightGreen, 10, "top-left"), [False, False, True], lists=[dwellerInfoMenuObjects], extraData=["assignedRoom"])
 	personalInfomation = Label(mainWindow, (400, 110, 150, 65), "DWELLER INFO", (colLightGreen, colDarkGray), ("Genetics:", colLightGreen, 10, "top-left"), [False, False, True], lists=[dwellerInfoMenuObjects], extraData=["personalInfomation"])
 	level = Label(mainWindow, (400, 210, 150, 65), "DWELLER INFO", (colLightGreen, colDarkGray), ("Leveling:", colLightGreen, 10, "top-left"), [False, False, True], lists=[dwellerInfoMenuObjects], extraData=["levelData"])
+
+
+def CreateRoomInfo():
+	back = HoldButton(mainWindow, (270, 240, 100, 50), ("ROOM INFO", "BACK"), (colLightGray, colLightGray), ("Back", colDarkGray), lists=[roomInfoMenuObjects, allButtons])
+	roomName = Label(mainWindow, (55, 55, 540, 30), "ROOM INFO", (colLightGreen, colLightGreen), ("", colLightGreen, 16, "center-center"), [True, False, True], lists=[roomInfoMenuObjects], extraData=["name"])
 
 
 def ScrollDwellerMenu(direction):
@@ -1559,7 +1567,7 @@ def ScrollDwellerMenu(direction):
 
 			for obj in dwellerMenuObjects:
 				if obj in allButtons:
-					if obj.action == "ASSIGN":
+					if obj.action == "ASSIGN" or obj.action == "INFO":
 						obj.rect.y -= dweller.rect.h + (3 * SF)
 		else:
 			dwellerPage = dwellerPageMax
@@ -1574,7 +1582,7 @@ def ScrollDwellerMenu(direction):
 
 			for obj in dwellerMenuObjects:
 				if obj in allButtons:
-					if obj.action == "ASSIGN":
+					if obj.action == "ASSIGN" or obj.action == "INFO":
 						obj.rect.y += dweller.rect.h + (3 * SF)
 		else:
 			dwellerPage = dwellerPageMin
@@ -1797,6 +1805,8 @@ def DrawLoop():
 		DrawDwellers()
 	elif gameState == "DWELLER INFO":
 		DrawDwellerInfo()
+	elif gameState == "ROOM INFO":
+		DrawRoomInfo()
 	else:
 		DrawRooms()
 
@@ -1846,6 +1856,36 @@ def DrawDwellerInfo():
 		obj.Draw()
 
 
+# experimental
+def DrawRoomInfo():
+	pg.draw.rect(mainWindow, colDarkGray, boundingRect)
+	for room in allRooms:
+		if room.showingInfo:
+			break
+
+	for obj in roomInfoMenuObjects:
+		if obj not in allRooms:
+			if obj.extraData[0] in dweller.__dict__:
+				x, y = (obj.rect.x // SF) + 5, (obj.rect.y // SF) + 20
+				allStats = []
+				attribute = dweller.__dict__[obj.extraData[0]]
+				try:
+					for stat in attribute:
+						allStats.append((("{}: {}".format(str(stat[0].upper() + str(stat[1:])), str(attribute[stat]))), (x, y), "center-left"))
+						y += 5 * SF
+					obj.UpdateExtraText(allStats)
+				except:
+					attributeName = ""
+					for char in obj.extraData[0]:
+						if char.isupper():
+							attributeName += " "
+						attributeName += char
+					
+					attributeName = attributeName[0].upper() + attributeName[1:]
+
+					text = "{}: {}".format(attributeName, str(attribute))
+					obj.UpdateText(text)obj.Draw()
+
 
 def DrawRooms():
 	for page in buildingPages:
@@ -1872,7 +1912,8 @@ def DrawDwellers():
 			if obj.action != "ASSIGN":
 				if obj.action != "DEASSIGN":
 					if obj.action != "CANCEL":
-						obj.Draw()
+						if boundingRect.colliderect(obj.rect):
+							obj.Draw()
 		else:
 			obj.Draw()
 
@@ -2125,6 +2166,7 @@ def LoadMenuClick(button):
 				GetBuildScrollColumnWidths()
 				CreateDwellers()
 
+
 	saveRoomPath = "saves/Save {0}/roomData.json".format(saveNum)
 	saveGamePath = "saves/Save {0}/gameData.json".format(saveNum)
 	saveDwellerPath = "saves/Save {0}/dwellerData.json".format(saveNum)
@@ -2374,6 +2416,10 @@ def UpgradeRoom(button):
 
 
 def ShowRoomInfo(button):
+	if gameState == "ROOM INFO":
+		gameState = "NONE":
+	else:
+		gameState = "ROOM INFO"
 	room = button.actionData["room"]
 	room.showingInfo = not room.showingInfo
 
@@ -2844,7 +2890,8 @@ def SetDeafaultSaveValues():
 		"genetics": {
 			"parents": [],
 			"age": [],
-			"gender": []
+			"gender": [],
+			"height": [],
 		}
 	}
 
@@ -2978,7 +3025,8 @@ def SaveDwellerData(path=saveDwellerPath):
 		"genetics": {
 			"parents": [],
 			"age": [],
-			"gender": []
+			"gender": [],
+			"height": []
 		}
 	}
 
@@ -2991,6 +3039,7 @@ def SaveDwellerData(path=saveDwellerPath):
 		levelThreshold = dweller.levelThreshold
 		levelThresholdMultipler = dweller.levelThresholdMultipler
 		inventory = dweller.inventory
+		height = dweller.height
 		if dweller.assignedRoom != None:
 			assignedRoom = allRooms.index(dweller.assignedRoom)
 		else:
@@ -3018,6 +3067,7 @@ def SaveDwellerData(path=saveDwellerPath):
 		dwellerData["genetics"]["parents"].append(parents)
 		dwellerData["genetics"]["age"].append(age)
 		dwellerData["genetics"]["gender"].append(gender)
+		dwellerData["genetics"]["height"].append(height)
 
 	with open(path, "w") as saveDwellerFile:
 		json.dump(dwellerData, fp=saveDwellerFile, indent=2)
@@ -3125,7 +3175,8 @@ def LoadDwellerData(path=loadDwellerPath, roomData=[]):
 			"genetics": {
 				"parents": dwellerData["genetics"]["parents"][i],
 				"age": dwellerData["genetics"]["age"][i],
-				"gender": dwellerData["genetics"]["gender"][i]
+				"gender": dwellerData["genetics"]["gender"][i],
+				"height": dwellerData["genetics"]["height"][i]
 			}
 		}
 		if data["assignedRoom"] != None:
@@ -3138,14 +3189,8 @@ def LoadDwellerData(path=loadDwellerPath, roomData=[]):
 		dweller.ChangeStats(data)
 		dweller.UpdateText()
 		assignDwellerButton = HoldButton(mainWindow, (x, y, w, h), ("DWELLERS", "ASSIGN"), (colWhite, colLightGray), ("", colDarkGray), lists=[dwellerMenuObjects, allButtons], actionData=[dweller])
+		infoDwellerButton = HoldButton(mainWindow, (x + w - 90, y, 90, h), ("DWELLERS", "INFO"), (colLightGreen, colLightGreen), ("Info", colDarkGray), lists=[dwellerMenuObjects, allButtons], actionData=[dweller])
 		y += h + 3
-
-		# for room in allRooms:
-		# 	dwellersWorking = []
-		# 	for index in roomData[allRooms.index(room)]:
-		# 		# for index in dwellerIndex:
-		# 		dwellersWorking.append(allDwellers[index])
-		# 	room.dwellersWorking = dwellersWorking
 
 
 def QuitMenu():
@@ -3155,7 +3200,7 @@ def QuitMenu():
 	# background for menu 
 	quitConfirmLabels.append(Label(mainWindow, (-100, -100, (WIDTH // 2) + 200, (HEIGHT // 2) + 200), "",(colDarkGray, colDarkGray), ("", colLightGray, 32, "center-center"), lists=[quitConfirmLabels]))
 	# main text
-	quitConfirmLabels.append(Label(mainWindow, (x, y, w, h), "CONFIRM QUIT",(colDarkGray, colDarkGray), ("Are you sure you want to quit?", colLightGray, 32, "center-center"), lists=[quitConfirmLabels], extraText=[("All data will be saved on exit.", (x + w // 2, y + h // 1.65, 10, 10))]))
+	quitConfirmLabels.append(Label(mainWindow, (x, y, w, h), "CONFIRM QUIT",(colDarkGray, colDarkGray), ("Are you sure you want to quit?", colLightGray, 32, "center-center"), lists=[quitConfirmLabels], extraText=[("All data will be saved on exit.", (160, -60), "center-center")]))
 	# save and exit
 	quitConfirmLabels.append(ToggleButton(mainWindow, ((x + w // 2) - 100 , 240, 200, 50), ("CONFIRM QUIT", "YES"), (colLightGray, colLightGray), ("YES", colDarkGray), lists=[quitConfirmLabels, allButtons], imageData=[buttonPath + "CONFIRM QUIT/YES.png", tempButtonPath + "CONFIRM QUIT/YES.png"]))
 	# reject quit
