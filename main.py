@@ -712,7 +712,7 @@ class Room:
 		self.overlayAnimation = []
 		self.currentFrameOverlay = 0
 
-		self.numOfFrames = 4
+		self.numOfFrames = 4 # change to height of image divided by height of room
 		self.animation = []
 		self.currentFrame = 0
 
@@ -1195,7 +1195,7 @@ class Dweller:
 			self.FinishBreed(self.partner)
 
 	def FinishBreed(self, partner):
-		self.breeding = False
+		self.breeding = False		
 		self.canBreed = True
 		self.breedingCoolDown = True
 
@@ -1265,6 +1265,7 @@ class Dweller:
 	def SaveTimes(self):
 		self.startTime = int(dt.datetime.utcnow().strftime("%S"))
 		endTime = timedelta(seconds=(self.startTime + self.breedDelay))
+		self.minutes = 0
 		self.endTime = endTime.seconds
 		for dweller in self.assignedRoom.dwellersWorking:
 			with open(self.dwellerSaveTimeFilePath, "r") as dwellerSaveTimeFile:
@@ -1293,15 +1294,21 @@ class Dweller:
 				self.endTime = dwellerSaveTimeData["time"]["end"][i]
 
 	def UpdateBreedCoolDown(self, currentTime):
-		# if self.endTime >= 60:
-			# self.endTime -= 60
-		print(currentTime)
+		if self.endTime >= 60:
+			self.endTime -= 60
 		if self.endTime != 0:
 			if self.endTime - currentTime < 0:
-				print((self.endTime - currentTime) + 60)
+				difference = (self.endTime - currentTime) + 60
 			else:
-				print(self.endTime - currentTime)
+				difference = self.endTime - currentTime
 
+		print(self.minutes, self.endTime, 60 * self.breedDelay / 60, currentTime, self.startTime, difference)
+		if difference == 0:
+			self.minutes += 1
+			if self.minutes >= self.breedDelay / 60:
+				print("Finish")
+				self.breedingCoolDown = False
+				self.canBreed = True
 
 
 def CreateResources():
@@ -1322,9 +1329,6 @@ def CreateDwellers():
 		dweller = Dweller(mainWindow, (x, y, w, h), colLightGreen, ("", colLightGreen, 8))
 		assignDwellerButton = HoldButton(mainWindow, (x, y, w, h), ("DWELLERS", "ASSIGN"), (colWhite, colLightGray), ("", colDarkGray), lists=[dwellerMenuObjects, allButtons], actionData=[dweller])
 		y += h + 3
-
-	for dweller in allDwellers:
-		dweller.LoadTimes()
 
 
 def CreateButtons():
@@ -1679,12 +1683,9 @@ def DrawDwellers():
 		else:
 			obj.Draw()
 
-	currentTime = int(dt.datetime.utcnow().strftime("%S"))
 	for dweller in allDwellers:
 		if boundingRect.colliderect(dweller.rect):
 			dweller.Draw()
-			if dweller.breedingCoolDown:
-				dweller.UpdateBreedCoolDown(currentTime)
 
 
 def DrawStartMenu():
@@ -2507,7 +2508,7 @@ def CheckSaveDirectory():
 			newDirectorys.append(newPath)
 
 	for path in newDirectorys:
-		roomData, gameData, dwellerData = SetDeafaultSaveValues() 
+		roomData, gameData, dwellerData, dwellerTimes = SetDeafaultSaveValues() 
 		os.chdir(path)
 
 		with open("roomData.json", "w") as saveGameFile:
@@ -2520,7 +2521,7 @@ def CheckSaveDirectory():
 			json.dump(dwellerData, fp=saveGameFile, indent=2)		
 
 		with open("dwellerTimes.json", "w") as saveGameFile:
-			json.dump(dwellerData, fp=saveGameFile, indent=2)
+			json.dump(dwellerTimes, fp=saveGameFile, indent=2)
 
 		os.chdir(rootDirectory)
 
@@ -2559,7 +2560,10 @@ def SetDeafaultSaveValues():
 		"roomRects": [],
 		"roomNames": [],
 		"roomIndexs": [],
-		"roomLevels": []
+		"roomLevels": [],
+		"joinedRooms": [],
+		"dwellersWorking": [],
+		"resourcesAvaiable": []
 	}
 
 	with open(resourceDataFilePath, "r") as resourceDataFile:
@@ -2586,48 +2590,53 @@ def SetDeafaultSaveValues():
 		"buildPage": buildPageMax
 		}
 
-	with open(dwellerDataFilePath, "r") as dwellerDataFile:
-		dwellerData = json.load(dwellerDataFile)
-
-		data = {
-			"names": [],
-			"specialStats": {
-				"strength": [],
-				"perception": [],
-				"endurance": [],
-				"intelligence": [],
-				"charisma": [],
-				"agility": [],
-				"luck": []
-			},
-			"stats": {
-				"health": [],
-				"defense": [],
-				"attack": [],
-				"happiness": []
-			},
-			"levelData": {
-				"xp": [],
-				"level": [],
-				"levelThresholdData": {
-					"levelThreshold": [],
-					"levelThresholdMultipler": []
-					},
-			},
-			"inventory": {
-				"main hand": [],
-				"armour": [],
-				"sepcial items": []
-			},
-			"assignedRoom": [],
-			"genetics": {
-				"parents": [],
-				"age": [],
-				"gender": []
-			}
+	dwellerData = {
+		"names": [],
+		"specialStats": {
+			"strength": [],
+			"perception": [],
+			"endurance": [],
+			"intelligence": [],
+			"charisma": [],
+			"agility": [],
+			"luck": []
+		},
+		"stats": {
+			"health": [],
+			"defense": [],
+			"attack": [],
+			"happiness": []
+		},
+		"levelData": {
+			"xp": [],
+			"level": [],
+			"levelThresholdData": {
+				"levelThreshold": [],
+				"levelThresholdMultipler": []
+				},
+		},
+		"inventory": {
+			"main hand": [],
+			"armour": [],
+			"sepcial items": []
+		},
+		"assignedRoom": [],
+		"genetics": {
+			"parents": [],
+			"age": [],
+			"gender": []
 		}
+	}
 
-	return roomData, gameData, data
+	dwellerTimes = {
+	"index": [],
+	"time": {
+		"start": [],
+		"end": []
+		}
+	}
+
+	return roomData, gameData, dwellerData, dwellerTimes
 
 
 def Save(roomPath=saveRoomPath, gameDataPath=saveGamePath, dwellerPath=saveDwellerPath):
@@ -3031,10 +3040,6 @@ def StartGame():
 	DrawLoop()
 
 	while running:
-		for dweller in allDwellers:
-			if dweller.breeding:
-				dweller.BreedCounter()
-
 		clock.tick(FPS)
 		for event in pg.event.get():
 			HandleKeyboard(event)
@@ -3070,6 +3075,13 @@ def StartGame():
 				if obj in allButtons:
 					if obj.action != "DWELLERS":
 						obj.active = False
+
+		currentTime = int(dt.datetime.utcnow().strftime("%S"))
+		for dweller in allDwellers:
+			if dweller.breeding:
+				dweller.BreedCounter()
+			# if dweller.breedingCoolDown:
+				# dweller.UpdateBreedCoolDown(currentTime)
 
 		DrawLoop()
 		UpdateAnimations()
