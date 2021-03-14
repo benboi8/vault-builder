@@ -1,19 +1,19 @@
 {
-	"names": ["Connor-Jay Philpotts", "Finlay axe man"],
+	"names": ["Connor-Jay Philpotts", "Finlay axe man of the south"],
 	"specialStats": {
-		"strength": [5, 10],
-		"perception": [4, 5],
-		"endurance": [4, 7],
-		"intelligence": [3, 4],
-		"charisma": [3, 10],
-		"agility": [3, 4],
-		"luck": [5, 9]
+		"Strength": [5, 10],
+		"Perception": [4, 5],
+		"Endurance": [4, 7],
+		"Intelligence": [3, 4],
+		"Charisma": [3, 10],
+		"Agility": [3, 4],
+		"Luck": [5, 9]
 	},
 	"stats": {
-		"health": [100, 100],
-		"defense": [25, 9],
-		"attack": [50, 10],
-		"happiness": [100, 100]
+		"Health": [100, 100],
+		"Defense": [25, 9],
+		"Attack": [50, 10],
+		"Happiness": [100, 100]
 	},
 	"levelData": {
 		"level": [1, 1],
@@ -36,6 +36,7 @@
 	"genetics": {
 		"parents": [[], []],
 		"age": [2, 2],
-		"gender": ["M", "M"]
+		"gender": ["M", "M"],
+		"height": [170, 180]
 	}
 }

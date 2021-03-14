@@ -5,3 +5,8 @@ add pets to dwellers info
 fixed room level not being updated on load
 switching rooms in build menu cancels current selection
 added dweller info
+
+14/03/2021
+added room info
+added game info
+add instructions

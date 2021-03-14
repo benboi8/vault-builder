@@ -1,0 +1,19 @@
+Collect resources by assigning dwellers to rooms, each SPECIAL skill will affect how many resources can be collected.
+
+ -- NOTICE --
+saving and loading may not work properly because it is being redone.
+
+Strength - Power.
+Perception - Water. 
+Endurance - Defense.
+Intelligence - Stimpacks.
+Charisma - Happiness & breeding.
+Agility - Food.
+Luck - Slight bonus to all.
+
+Rooms can be upgraded and linked together for higher rewards and cheaper upgrades.
+
+Dwellers can be bred in the Lounge to produce children that grow overtime.
+ -- not implemented yet --
+Expanding how many dweller you have also lets you buy more rooms and unlock more things.
+The dweller limit can be raised by buying more Lounges.

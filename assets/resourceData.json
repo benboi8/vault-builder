@@ -1,7 +1,7 @@
 {
 	"Water": {
 		"name": "Water",
-		"roomType": "water",
+		"roomType": "Water",
 		"value": {
 			"startValue": 50,
 			"minimum": 0,
@@ -17,7 +17,7 @@
 	},
 	"Food": {
 		"name": "Food",
-		"roomType": "food",
+		"roomType": "Food",
 		"value": {
 			"startValue": 50,
 			"minimum": 0,
@@ -33,7 +33,7 @@
 	},
 	"Power": {
 		"name": "Power",
-		"roomType": "power",
+		"roomType": "Power",
 		"value": {
 			"startValue": 50,
 			"minimum": 0,

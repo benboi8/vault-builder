@@ -2,8 +2,8 @@
 	"water": {
 		"name": "Water purification",
 		"resource": {
-			"type": "water",
-			"specialStatType": "perception",
+			"type": "Water",
+			"specialStatType": "Perception",
 			"amount": 4,
 			"time": 30
 		},
@@ -29,8 +29,8 @@
 	"food": {
 		"name": "Diner",
 		"resource": {
-			"type": "food",
-			"specialStatType": "agility",
+			"type": "Food",
+			"specialStatType": "Agility",
 			"amount": 4,
 			"time": 30
 		},
@@ -56,8 +56,8 @@
 	"power": {
 		"name": "Power generator",
 		"resource": {
-			"type": "power",
-			"specialStatType": "strength",
+			"type": "Power",
+			"specialStatType": "Strength",
 			"amount": 4,
 			"time": 30
 		},
@@ -83,8 +83,8 @@
 	"lab": {
 		"name": "Labatory",
 		"resource": {
-			"type": "experiments",
-			"specialStatType": "intelligence",
+			"type": "Stimpacks",
+			"specialStatType": "Intelligence",
 			"amount": 0,
 			"time": 0
 		},
@@ -110,8 +110,8 @@
 	"lounge": {
 		"name": "Lounge",
 		"resource": {
-			"type": "dwellers",
-			"specialStatType": "charisma",
+			"type": "Dwellers",
+			"specialStatType": "Charisma",
 			"amount": 0,
 			"time": 60
 		},
@@ -137,8 +137,8 @@
 	"admin": {
 		"name": "Control room",
 		"resource": {
-			"type": "wasteland",
-			"specialStatType": "none",
+			"type": "None",
+			"specialStatType": "None",
 			"amount": 0,
 			"time": 60
 		},
@@ -164,8 +164,8 @@
 	"lift": {
 		"name": "Lift",
 		"resource": {
-			"type": "none",
-			"specialStatType": "none",
+			"type": "None",
+			"specialStatType": "None",
 			"amount": 0,
 			"time": 0
 		},
@@ -191,8 +191,8 @@
 	"vaultDoor": {
 		"name": "Vault Door",
 		"resource": {
-			"type": "security",
-			"specialStatType": "endurance",
+			"type": "Defense",
+			"specialStatType": "Endurance",
 			"amount": 0,
 			"time": 0
 		},
@@ -218,8 +218,8 @@
 	"radio": {
 		"name": "Radio",
 		"resource": {
-			"type": "happiness",
-			"specialStatType": "charisma",
+			"type": "Happiness",
+			"specialStatType": "Charisma",
 			"amount": 0,
 			"time": 360
 		},
@@ -245,8 +245,8 @@
 	"trainingRoom": {
 		"name": "Training Room",
 		"resource": {
-			"type": "stat",
-			"specialStatType": "none",
+			"type": "None",
+			"specialStatType": "None",
 			"amount": 0,
 			"time": 0
 		},
@@ -272,8 +272,8 @@
 	"security": {
 		"name": "Security",
 		"resource": {
-			"type": "security",
-			"specialStatType": "endurance",
+			"type": "Defense",
+			"specialStatType": "Endurance",
 			"amount": 0,
 			"time": 120
 		},
@@ -300,7 +300,7 @@
 		"name": "Shop",
 		"resource": {
 			"type": "Caps",
-			"specialStatType": "charisma",
+			"specialStatType": "Charisma",
 			"amount": 10,
 			"time": 40
 		},

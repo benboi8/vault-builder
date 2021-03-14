@@ -4,46 +4,46 @@
 		"female": ["Amanda", "Georgia", "Jet", "Kylie", "Sidney", "Rhonda", "Scarlett", "Spring", "Salma", "Shelly", "Zoe", "Angel", "Alexis", "Aubrey", "Olivia", "Nova", "Nancy", "Mohammed", "Molly", "Madelyn", "Marie", "Liliana", "Kaitlyn", "Kelly", "Jasmine", "Izzie", "Jo", "Hannah", "Hazel", "Gianna", "Fiona", "Emma", "Emily", "Elena", "Debra", "Deborah", "Becky", "Betty"]
 	},
 	"SPECIAL": {
-		"strength": {
+		"Strength": {
 			"min": 1,
 			"max": 4
 		},
-		"perception": {
+		"Perception": {
 			"min": 1,
 			"max": 4
 		},
-		"endurance": {
+		"Endurance": {
 			"min": 1,
 			"max": 4
 		},
-		"intelligence": {
+		"Intelligence": {
 			"min": 1,
 			"max": 4
 		},
-		"charisma": {
+		"Charisma": {
 			"min": 1,
 			"max": 4
 		},
-		"agility": {
+		"Agility": {
 			"min": 1,
 			"max": 4
 		},
-		"luck": {
+		"Luck": {
 			"min": 1,
 			"max": 4
 		}
 	},
 	"stats": {
-		"health": 100,
-		"defense": {
+		"Health": 100,
+		"Defense": {
 			"min": 0,
 			"max": 3
 		},
-		"attack": {
+		"Attack": {
 			"min": 0,
 			"max": 3
 		},
-		"happiness": {
+		"Happiness": {
 			"min": 60,
 			"max": 90
 		}
