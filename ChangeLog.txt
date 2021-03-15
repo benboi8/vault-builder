@@ -10,3 +10,9 @@ added dweller info
 added room info
 added game info
 add instructions
+
+15/03/2021
+changed how dwellers are saved
+fixed some dweller loading bugs
+added working dwellers and assigned rooms to saves
+fixed dweller assign button loading

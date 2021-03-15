@@ -5,6 +5,7 @@ from datetime import timedelta
 import json
 from PIL import Image
 import os
+import sys
 from os import listdir
 from os.path import isfile, join
 import random
@@ -42,6 +43,7 @@ instructionPath = "assets/Instructions.txt"
 saveNum = 1
 numOFSaveFiles = 6
 savePath = "saves/"
+saveDwellerTemplatePath = "assets/dwellers/dwellerSaveTemplate.json"
 saveRoomPath = "saves/Save {}/roomData.json".format(saveNum)
 loadRoomPath = "saves/Save {}/roomData.json".format(saveNum)
 saveGamePath = "saves/Save {}/gameData.json".format(saveNum)
@@ -1061,6 +1063,18 @@ class Dweller:
 		if dwellerData["genetics"]["gender"] == -1: self.gender = random.randint(0, 1)
 		else: self.gender = dwellerData["genetics"]["gender"]
 
+		self.parents = dwellerData["genetics"]["parents"]
+		# 0 - child, 1 - teen, 2 - adult
+		self.age = dwellerData["genetics"]["age"]
+		self.height = random.randint(160, 180)
+
+		self.genetics = {
+			"parents": self.parents,
+			"gender": self.gender,
+			"age": self.age,
+			"height": self.height
+		}
+
 		if self.gender == 0:
 			self.name = dwellerData["names"]["male"][random.randint(0, len(dwellerData["names"]["male"]) - 1)]
 			self.gender = "M"
@@ -1098,10 +1112,10 @@ class Dweller:
 		}
 
 		self.assignedRoom = dwellerData["assignedRoom"]
-
-		self.parents = dwellerData["genetics"]["parents"]
-		# 0 - child, 1 - teen, 2 - adult
-		self.age = dwellerData["genetics"]["age"]
+		if self.assignedRoom != None:
+			self.assignedRoomName = self.assignedRoom.name
+		else:
+			self.assignedRoomName = None
 
 		if self.age == 0:
 			age = "Child"
@@ -1109,8 +1123,6 @@ class Dweller:
 			age = "Teen"
 		elif self.age == 2:
 			age = "Adult"
-
-		self.height = random.randint(160, 180)
 
 		self.personalInfomation = {
 			"gender": self.gender,
@@ -1154,16 +1166,25 @@ class Dweller:
 			"height": str(self.height) + "cm"
 		}
 
-		self.levelData = {
+		self.levelDataText = {
 			"level": self.level,
 			"xp": self.xp,
 			"xp to next level up": self.levelThreshold - self.xp
 		}
 
+		self.levelData = {
+			"level": self.level,
+			"xp": self.xp,
+			"levelThresholdData": {
+				"levelThreshold": self.levelThreshold, 
+				"levelThresholdMultipler": self.levelThresholdMultipler
+			}
+		}
+
 		if self.assignedRoom != None:
-			roomName = self.assignedRoom.name
+			self.assignedRoomName = self.assignedRoom.name
 		else:
-			roomName = None
+			self.assignedRoomName = None
 		textObjs = [
 		(str(self.name), 2),
 		("G: {}".format(str(self.gender)), 150),
@@ -1176,7 +1197,7 @@ class Dweller:
 		("L: {}".format(str(self.specialStats["Luck"])), 295),
 		("Health: {}".format(str(self.stats["Health"])), 320),
 		("Lvl: {}".format(str(self.level)), 375),
-		("Room: {}".format(str(roomName)), 405)
+		("Room: {}".format(str(self.assignedRoomName)), 405)
 		]
 		allTextSurfaces = []
 		for textData in textObjs:
@@ -1261,6 +1282,32 @@ class Dweller:
 		# check if there is not already a gender for loading dwellers
 		self.gender = dwellerData["genetics"]["gender"]
 		self.height = dwellerData["genetics"]["height"]
+
+		if self.gender == "M":
+			gender = 0
+		if self.gender == "F":
+			gender = 1
+		else:
+			gender = self.gender
+
+		self.genetics = {
+			"parents": self.parents,
+			"gender": gender,
+			"age": self.age,
+			"height": self.height
+		}
+		if self.age == 0:
+			age = "Child"
+		elif self.age == 1:
+			age = "Teen"
+		elif self.age == 2:
+			age = "Adult"
+
+		self.personalInfomation = {
+			"gender": self.gender,
+			"age": age,
+			"height": str(self.height) + "cm"
+		}
 
 		self.currentTime = int(dt.datetime.utcnow().strftime("%S"))
 
@@ -1448,8 +1495,8 @@ def CreateDwellers():
 	h = 15
 	for i in range(0, startNumOfDwellers):
 		dweller = Dweller(mainWindow, (x, y, w, h), colLightGreen, ("", colLightGreen, 8))
-		assignDwellerButton = HoldButton(mainWindow, (x, y, w - 90, h), ("DWELLERS", "ASSIGN"), (colLightGray, colLightGray), ("", colDarkGray), lists=[dwellerMenuObjects, allButtons], actionData=[dweller])
-		infoDwellerButton = HoldButton(mainWindow, (x + w - 90, y, 90, h), ("DWELLERS", "INFO"), (colLightGreen, colLightGreen), ("Info", colDarkGray), lists=[dwellerMenuObjects, allButtons], actionData=[dweller])
+		assignDwellerButton = HoldButton(mainWindow, (x, y, w - 30, h), ("DWELLERS", "ASSIGN"), (colLightGray, colLightGray), ("", colDarkGray), lists=[dwellerMenuObjects, allButtons], actionData=[dweller])
+		infoDwellerButton = HoldButton(mainWindow, (x + w - 30, y, 30, h), ("DWELLERS", "INFO"), (colLightGreen, colLightGreen), ("Info", colDarkGray), lists=[dwellerMenuObjects, allButtons], actionData=[dweller])
 		y += h + 3
 
 	CreateCustomDwellers()
@@ -1467,8 +1514,8 @@ def CreateCustomDwellers():
 
 	for i in range(len(dwellerData["names"])):
 		dweller = Dweller(mainWindow, (x, y, w, h), colLightGreen, ("", colLightGreen, 8))
-		assignDwellerButton = HoldButton(mainWindow, (x, y, w - 90, h), ("DWELLERS", "ASSIGN"), (colWhite, colLightGray), ("", colDarkGray), lists=[dwellerMenuObjects, allButtons], actionData=[dweller])
-		infoDwellerButton = HoldButton(mainWindow, (x + w - 90, y, 90, h), ("DWELLERS", "INFO"), (colGreen, colLightGreen), ("Info", colDarkGray), lists=[dwellerMenuObjects, allButtons], actionData=[dweller])
+		assignDwellerButton = HoldButton(mainWindow, (x, y, w - 30, h), ("DWELLERS", "ASSIGN"), (colWhite, colLightGray), ("", colDarkGray), lists=[dwellerMenuObjects, allButtons], actionData=[dweller])
+		infoDwellerButton = HoldButton(mainWindow, (x + w - 30, y, 30, h), ("DWELLERS", "INFO"), (colGreen, colLightGreen), ("Info", colDarkGray), lists=[dwellerMenuObjects, allButtons], actionData=[dweller])
 		y += h + 3
 		data = {
 			"name": dwellerData["names"][i],
@@ -1581,9 +1628,9 @@ def CreateDwellerInfo():
 	specialStats = Label(mainWindow, (60, 110, 65, 95), "DWELLER INFO", (colLightGreen, colDarkGray), ("SPECIAL:", colLightGreen, 10, "top-left"), [False, False, True], lists=[dwellerInfoMenuObjects], extraData=["specialStats"])
 	stats = Label(mainWindow, (135, 110, 65, 65), "DWELLER INFO", (colLightGreen, colDarkGray), ("STATS:", colLightGreen, 10, "top-left"), [False, False, True], lists=[dwellerInfoMenuObjects], extraData=["stats"])
 	inventory = Label(mainWindow, (210, 110, 150, 65), "DWELLER INFO", (colLightGreen, colDarkGray), ("INVENTORY:", colLightGreen, 10, "top-left"), [False, False, True], lists=[dwellerInfoMenuObjects], extraData=["inventory"])
-	assignedRoom = Label(mainWindow, (60, 210, 140, 45), "DWELLER INFO", (colLightGreen, colDarkGray), ("Assigned Room:", colLightGreen, 10, "top-left"), [False, False, True], lists=[dwellerInfoMenuObjects], extraData=["assignedRoom"])
+	assignedRoom = Label(mainWindow, (60, 210, 195, 25), "DWELLER INFO", (colLightGreen, colDarkGray), ("Assigned Room:", colLightGreen, 10, "top-left"), [False, False, True], lists=[dwellerInfoMenuObjects], extraData=["assignedRoomName"])
 	personalInfomation = Label(mainWindow, (400, 110, 150, 65), "DWELLER INFO", (colLightGreen, colDarkGray), ("Genetics:", colLightGreen, 10, "top-left"), [False, False, True], lists=[dwellerInfoMenuObjects], extraData=["personalInfomation"])
-	level = Label(mainWindow, (400, 210, 150, 65), "DWELLER INFO", (colLightGreen, colDarkGray), ("Leveling:", colLightGreen, 10, "top-left"), [False, False, True], lists=[dwellerInfoMenuObjects], extraData=["levelData"])
+	level = Label(mainWindow, (400, 210, 150, 65), "DWELLER INFO", (colLightGreen, colDarkGray), ("Leveling:", colLightGreen, 10, "top-left"), [False, False, True], lists=[dwellerInfoMenuObjects], extraData=["levelDataText"])
 
 
 def CreateRoomInfo():
@@ -1804,7 +1851,7 @@ def UpdateLoadMenuTime():
 def DrawLoop():
 	global boundingRect
 	mainWindow.fill(colDarkGray)
-
+	
 	if demolishBuildButton.active:
 		DrawRectOutline(mainWindow, colRed, (boundingRect.x - 1.5 * SF, boundingRect.y - 1.5 * SF, boundingRect.w + 2 * SF, boundingRect.h + 3 * SF), 1 * SF)
 	else:
@@ -2167,6 +2214,7 @@ def DwellerClick(button):
 
 	if button.rect.colliderect(boundingRect):
 		if button.action == "INFO":
+
 			DwellerInfo(button.actionData[0])
 			button.active = False
 
@@ -2291,7 +2339,6 @@ def LoadMenuClick(button):
 				AddStartingRooms()
 				GetBuildPageRowHeights()
 				GetBuildScrollColumnWidths()
-				CreateDwellers()
 
 
 	saveRoomPath = "saves/Save {0}/roomData.json".format(saveNum)
@@ -2359,8 +2406,9 @@ def PrimaryButtonPress(event):
 											QuitButtonClick(button)
 										else:
 											if button.active:
-												if button.action == "DWELLERS":
-													CancelAssignDweller()
+												if gameState != "NONE":
+													if button.action == "DWELLERS":
+														CancelAssignDweller()
 												if button.action in allActions:
 													gameState = button.action
 													# prevent multiple buttons being active
@@ -2981,45 +3029,9 @@ def SetDeafaultSaveValues():
 		"buildPage": buildPageMax
 		}
 
-	dwellerData = {
-		"names": [],
-		"specialStats": {
-			"Strength": [],
-			"Perception": [],
-			"Endurance": [],
-			"Intelligence": [],
-			"Charisma": [],
-			"Agility": [],
-			"Luck": []
-		},
-		"stats": {
-			"Health": [],
-			"Defense": [],
-			"Attack": [],
-			"Happiness": []
-		},
-		"levelData": {
-			"xp": [],
-			"level": [],
-			"levelThresholdData": {
-				"levelThreshold": [],
-				"levelThresholdMultipler": []
-				},
-		},
-		"inventory": {
-			"main hand": [],
-			"armour": [],
-			"pet": [],
-			"sepcial items": []
-		},
-		"assignedRoom": [],
-		"genetics": {
-			"parents": [],
-			"age": [],
-			"gender": [],
-			"height": [],
-		}
-	}
+	with open(saveDwellerTemplatePath, "r") as dwellerSaveTemplateFile:
+		dwellerData = json.load(dwellerSaveTemplateFile)
+		dwellerSaveTemplateFile.close()
 
 	dwellerTimes = {
 	"index": [],
@@ -3114,87 +3126,42 @@ def SaveGameData(path=saveGamePath):
 
 
 def SaveDwellerData(path=saveDwellerPath):
-	dwellerData = {
-		"names": [],
-		"specialStats": {
-			"Strength": [],
-			"Perception": [],
-			"Endurance": [],
-			"Intelligence": [],
-			"Charisma": [],
-			"Agility": [],
-			"Luck": []
-		},
-		"stats": {
-			"Health": [],
-			"Defense": [],
-			"Attack": [],
-			"Happiness": []
-		},
-		"levelData": {
-			"xp": [],
-			"level": [],
-			"levelThresholdData": {
-				"levelThreshold": [],
-				"levelThresholdMultipler": []
-				},
-		},
-		"inventory": {
-			"main hand": [],
-			"armour": [],
-			"pet": [],
-			"sepcial items": []
-		},
-		"assignedRoom": [],
-		"genetics": {
-			"parents": [],
-			"age": [],
-			"gender": [],
-			"height": []
-		}
-	}
+	"""name, specialStats, stats, xp, level,
+	levelThreshold, levelThresholdMultipler, inventory,
+	height, assignedRoom, parents, age, gender, """
+	savedItems = ["name", "specialStats", "stats", "levelData", "inventory", "assignedRoom", "genetics"]
+	with open(saveDwellerTemplatePath, "r") as dwellerSaveTemplateFile:
+		dataToWrite = json.load(dwellerSaveTemplateFile)
+		dwellerSaveTemplateFile.close()
 
-	for dweller in allDwellers:
-		name = dweller.name
-		specialStats = dweller.specialStats
-		stats = dweller.stats
-		xp = dweller.xp
-		level = dweller.level
-		levelThreshold = dweller.levelThreshold
-		levelThresholdMultipler = dweller.levelThresholdMultipler
-		inventory = dweller.inventory
-		height = dweller.height
-		if dweller.assignedRoom != None:
-			assignedRoom = allRooms.index(dweller.assignedRoom)
-		else:
-			assignedRoom = None
-		parents = []
-		if len(dweller.parents) > 0:
-			for parent in dweller.parents:
-				parents.append(allDwellers.index(parent))
+	for i, dweller in enumerate(allDwellers):
+		dataToWrite["index"].append(i)
+		for savedItem in savedItems:
+			if savedItem in dweller.__dict__:
+				attribute = dweller.__dict__[savedItem]
+				try:
+					if savedItem == "name":
+						raise
+					if savedItem == "assignedRoom":
+						dataToWrite[savedItem].append(allRooms.index(attribute))
 
-		age = dweller.age
-		gender = dweller.gender
-		dwellerData["names"].append(name)
-		for special in specialStats:
-			dwellerData["specialStats"][special].append(specialStats[special])
-		for stat in stats:
-			dwellerData["stats"][stat].append(stats[stat])
-		dwellerData["levelData"]["xp"].append(xp)
-		dwellerData["levelData"]["level"].append(level)
-		dwellerData["levelData"]["levelThresholdData"]["levelThreshold"].append(levelThreshold)
-		dwellerData["levelData"]["levelThresholdData"]["levelThresholdMultipler"].append(levelThresholdMultipler)
-		for item in inventory:
-			dwellerData["inventory"][item].append(inventory[item])
-
-		dwellerData["assignedRoom"].append(assignedRoom)
-		dwellerData["genetics"]["parents"].append(parents)
-		dwellerData["genetics"]["age"].append(age)
-		dwellerData["genetics"]["gender"].append(gender)
-		dwellerData["genetics"]["height"].append(height)
-
-	with open(path, "w") as saveDwellerFile:
-		json.dump(dwellerData, fp=saveDwellerFile, indent=2)
+					else:
+						for attributeName in attribute:
+							dataToWrite[savedItem][attributeName].append(attribute[attributeName])
+				except:
+					try:
+						if savedItem == "name":
+							raise
+						else:
+							for attributeName in attribute:
+								if attributeName == "levelThresholdData":
+									for data in attribute[attributeName]:
+										dataToWrite[savedItem][attributeName][data].append(attribute[attributeName][data]) 
+					except:
+						dataToWrite[savedItem].append(attribute)
+	
+	with open(path, "w") as saveFile:
+		json.dump(dataToWrite, fp=saveFile, indent=2)				
 
 
 def LoadRoom(path=loadRoomPath):
@@ -3237,76 +3204,64 @@ def LoadGameData(path=loadGamePath):
 
 def LoadDwellerData(path=loadDwellerPath, roomData=[]):
 	global allDwellers, dwellerMenuObjects
-	allDwellers = []
-	for button in allButtons:
-		for obj in dwellerMenuObjects:
-			if obj in allButtons:
-				if obj.action == "ASSIGN":
-					allButtons.remove(obj) 
-					dwellerMenuObjects.remove(obj)
 
-	with open(path, "r") as dwellerDataFile:
-		dwellerData = json.load(dwellerDataFile)
+	with open(path, "r") as dwellerSaveTemplateFile:
+		dwellerData = json.load(dwellerSaveTemplateFile)
+		dwellerSaveTemplateFile.close()
 
-	x, y, w, h = boundingRect
-	x /= SF
-	y /= SF
-	w -= 3
-	w /= SF
-	h = 15
-	for i in range(len(dwellerData["names"])):
-		dweller = Dweller(mainWindow, (x, y, w, h), colLightGreen, ("", colLightGreen, 8))
-		data = {
-			"name": dwellerData["names"][i],
-			"specialStats": {
-				"strength": dwellerData["specialStats"]["strength"][i],
-				"perception": dwellerData["specialStats"]["perception"][i],
-				"endurance": dwellerData["specialStats"]["endurance"][i],
-				"intelligence": dwellerData["specialStats"]["intelligence"][i],
-				"charisma": dwellerData["specialStats"]["charisma"][i],
-				"agility": dwellerData["specialStats"]["agility"][i],
-				"luck": dwellerData["specialStats"]["luck"][i]
-			},
-			"stats": {
-				"health": dwellerData["stats"]["health"][i],
-				"defense": dwellerData["stats"]["defense"][i],
-				"attack": dwellerData["stats"]["attack"][i],
-				"happiness": dwellerData["stats"]["happiness"][i]
-			},
-			"levelData": {
-				"xp": dwellerData["levelData"]["xp"][i],
-				"level": dwellerData["levelData"]["level"][i],
-				"levelThresholdData": {
-					"levelThreshold": dwellerData["levelData"]["levelThresholdData"]["levelThreshold"][i],
-					"levelThresholdMultipler": dwellerData["levelData"]["levelThresholdData"]["levelThresholdMultipler"][i]
-				},
-			},
-			"inventory": {
-				"main hand": dwellerData["inventory"]["main hand"][i],
-				"armour": dwellerData["inventory"]["armour"][i],
-				"pet": dwellerData["inventory"]["pet"][i],
-				"sepcial items": dwellerData["inventory"]["sepcial items"][i]
-			},
-			"assignedRoom": dwellerData["assignedRoom"][i],
-			"genetics": {
-				"parents": dwellerData["genetics"]["parents"][i],
-				"age": dwellerData["genetics"]["age"][i],
-				"gender": dwellerData["genetics"]["gender"][i],
-				"height": dwellerData["genetics"]["height"][i]
-			}
-		}
-		if data["assignedRoom"] != None:
-			data["assignedRoom"] = allRooms[data["assignedRoom"]]
-		parents = []
-		if len(data["genetics"]["parents"]) > 0:
-			for parent in data["genetics"]["parents"]:
-				parents.append(allDwellers[parent])
-		data["genetics"]["parents"] = parents
-		dweller.ChangeStats(data)
-		dweller.UpdateText()
-		assignDwellerButton = HoldButton(mainWindow, (x, y, w, h), ("DWELLERS", "ASSIGN"), (colWhite, colLightGray), ("", colDarkGray), lists=[dwellerMenuObjects, allButtons], actionData=[dweller])
-		infoDwellerButton = HoldButton(mainWindow, (x + w - 90, y, 90, h), ("DWELLERS", "INFO"), (colLightGreen, colLightGreen), ("Info", colDarkGray), lists=[dwellerMenuObjects, allButtons], actionData=[dweller])
-		y += h + 3
+	allDataToWrite = []
+	if len(dwellerData["index"]) > 0:
+		for i in range(len(dwellerData["index"])):
+			dataToWrite = {}
+			for attribute in dwellerData:
+				if attribute != "index":
+					dataToWrite[attribute] = dwellerData[attribute]
+				if attribute == "assignedRoom":
+					if dwellerData[attribute][i] != None:
+						dataToWrite[attribute][i] = allRooms[dwellerData[attribute][i]]
+
+				try:
+					dwellerData[attribute].append("test")
+					dwellerData[attribute].remove("test")
+					if attribute != "index":
+						dataToWrite[attribute] = dwellerData[attribute][i]
+				except:
+					try:
+						for attributeName in dwellerData[attribute]:
+							try:	
+								dwellerData[attribute][attributeName].append("test")
+								dwellerData[attribute][attributeName].remove("test")
+								dataToWrite[attribute][attributeName] = dwellerData[attribute][attributeName][i]
+							except:
+								for attribute2 in dwellerData[attribute][attributeName]:
+									dataToWrite[attribute][attributeName][attribute2] = dwellerData[attribute][attributeName][attribute2][i]
+					except:
+						pass
+
+			allDataToWrite.append(dataToWrite)
+		
+		x, y, w, h = boundingRect
+		x /= SF
+		y /= SF
+		w -= 3
+		w /= SF
+		h = 15
+		allDwellers = []
+		# dwellerMenuObjects = []
+
+		for i, dataToWrite in enumerate(allDataToWrite):
+			dweller = Dweller(mainWindow, (x, y, w, h), colLightGreen, ("", colLightGreen, 8))
+			dweller.ChangeStats(dataToWrite)
+			dweller.UpdateText()
+			if dataToWrite["assignedRoom"] != None: 
+				dataToWrite["assignedRoom"].dwellersWorking.append(dweller)
+			
+			assignDwellerButton = HoldButton(mainWindow, (x, y, w - 30, h), ("DWELLERS", "ASSIGN"), (colLightGray, colLightGray), ("", colDarkGray), lists=[dwellerMenuObjects, allButtons], actionData=[dweller])
+			infoDwellerButton = HoldButton(mainWindow, (x + w - 30, y, 30, h), ("DWELLERS", "INFO"), (colLightGreen, colLightGreen), ("Info", colDarkGray), lists=[dwellerMenuObjects, allButtons], actionData=[dweller])
+			y += h + 3
+
+	else:
+		CreateDwellers()
 
 
 def QuitMenu():

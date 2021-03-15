@@ -1,0 +1,40 @@
+{
+	"index": [],
+	"name": [],
+	"specialStats": {
+		"Strength": [],
+		"Perception": [],
+		"Endurance": [],
+		"Intelligence": [],
+		"Charisma": [],
+		"Agility": [],
+		"Luck": []
+	},
+	"stats": {
+		"Health": [],
+		"Defense": [],
+		"Attack": [],
+		"Happiness": []
+	},
+	"levelData": {
+		"level": [],
+		"xp": [],
+		"levelThresholdData": {
+			"levelThreshold": [],
+			"levelThresholdMultipler": []
+		}
+	},
+	"inventory": {
+		"main hand": [],
+		"armour": [],
+		"pet": [],
+		"sepcial items": []
+	},
+	"assignedRoom": [],
+	"genetics": {
+		"parents": [],
+		"gender": [],
+		"age": [],
+		"height": []
+	}
+	}
